@@ -1,0 +1,78 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Post",
+      "description": "A premium blog article",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique post identifier slug" },
+        "title": { "type": "string", "description": "The main article title text" },
+        "excerpt": { "type": "string", "description": "Brief summary of the article" },
+        "content": { "type": "array", "description": "An array of body text paragraphs" },
+        "categoryId": { "type": "string", "description": "The assigned category ID" },
+        "author": { "type": "object", "description": "Details about the author" },
+        "date": { "type": "string", "description": "Formatted publication date" },
+        "readTime": { "type": "integer", "description": "Estimated minutes to read" },
+        "imageUrl": { "type": "string", "description": "Hero graphic URL" },
+        "featured": { "type": "boolean", "description": "Whether it is featured in the main slot" },
+        "trending": { "type": "boolean", "description": "Whether it is highlighted as trending" },
+        "likesCount": { "type": "integer", "description": "Total reader reactions received" }
+      },
+      "required": ["id", "title", "excerpt", "content", "categoryId", "author", "date", "readTime", "imageUrl"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "User feedback on a specific article",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "postId", "authorName", "content", "createdAt"]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "An email address registered for the weekly newsletter",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "subscribedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" }
+      },
+      "required": ["email", "subscribedAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "Tracks upvotes for verification and calculation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "postId": { "type": "string" },
+        "userId": { "type": "string" },
+        "likesCount": { "type": "integer" }
+      }
+    }
+  },
+  "firestore": {
+    "articles/{postId}": {
+      "schema": "Post",
+      "description": "Collection storing Oinone professional technology, finance, and business articles"
+    },
+    "articles/{postId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Subcollection under articles storing community feedback"
+    },
+    "articles/{postId}/likes/{likeId}": {
+      "schema": "Like",
+      "description": "Tracks users who liked each post to count interactions reliably"
+    },
+    "subscribers/{email}": {
+      "schema": "Subscriber",
+      "description": "Stores digital newsletter subscription details"
+    }
+  }
+}

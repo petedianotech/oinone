@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Articles Collection rules
+    match /articles/{postId} {
+      allow read: if true;
+      allow create, update, delete: if false; // System/Console-only writes to protect integrity of published content
+
+      // 2. Comments on individual articles
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if 
+          isValidId(commentId) &&
+          incoming().keys().hasAll(['id', 'postId', 'authorName', 'content', 'createdAt']) &&
+          incoming().keys().size() == 5 &&
+          incoming().id == commentId &&
+          incoming().postId == postId &&
+          incoming().authorName is string &&
+          incoming().authorName.size() >= 2 &&
+          incoming().authorName.size() <= 100 &&
+          incoming().content is string &&
+          incoming().content.size() >= 1 &&
+          incoming().content.size() <= 2000 &&
+          incoming().createdAt is string &&
+          incoming().createdAt.size() <= 50;
+
+        allow update, delete: if false; // Comments, once posted, are read-only
+      }
+
+      // 3. Likes subcollection to support article interactions
+      match /likes/{likeId} {
+        allow read: if true;
+        allow create, update: if
+          isValidId(likeId) &&
+          incoming().keys().hasAll(['id', 'postId', 'userId', 'likesCount']) &&
+          incoming().keys().size() == 4 &&
+          incoming().id == likeId &&
+          incoming().postId == postId &&
+          incoming().userId is string &&
+          incoming().userId.size() <= 128 &&
+          incoming().likesCount is int &&
+          incoming().likesCount >= 0 &&
+          incoming().likesCount <= 1;
+
+        allow delete: if true;
+      }
+    }
+
+    // 4. Newsletter Subscribers Collection rules (Protecting list privacy)
+    match /subscribers/{email} {
+      allow read, update, delete: if false; // Block user-facing read queries to prevent email harvesting
+      allow create: if
+        email is string &&
+        email.size() <= 150 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-0.-]+\\.[a-zA-Z]{2,}$') &&
+        incoming().keys().hasAll(['email', 'subscribedAt', 'status']) &&
+        incoming().keys().size() == 3 &&
+        incoming().email == email &&
+        incoming().status == 'active' &&
+        incoming().subscribedAt is string &&
+        incoming().subscribedAt.size() <= 50;
+    }
+  }
+}

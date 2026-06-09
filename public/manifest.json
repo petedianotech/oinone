@@ -1,0 +1,22 @@
+{
+  "name": "Oinone Premium Blog",
+  "short_name": "Oinone",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#4f46e5",
+  "description": "A premium all-in-one blog platform featuring Finance, Technology, AI, and Online Business. Written by Peter Damiano.",
+  "icons": [
+    {
+      "src": "/app_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

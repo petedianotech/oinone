@@ -1,0 +1,6 @@
+{
+  "name": "Oinone",
+  "description": "A premium all-in-one blog platform featuring Finance, Technology, AI, and Online Business content.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
