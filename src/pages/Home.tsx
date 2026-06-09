@@ -147,40 +147,6 @@ export function Home() {
                     </button>
                   ))}
                 </div>
-
-                {/* Built-in Premium Feature Menu Shortcuts */}
-                <div className="relative z-10 space-y-4">
-                  <h4 className="font-display text-[10px] uppercase font-bold tracking-widest text-indigo-300/80 mb-2">Platform Channels</h4>
-                  <div className="space-y-2.5">
-                    <Link to="/finance" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
-                      <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
-                        <Coins className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-semibold text-white">Finance & Markets</p>
-                        <p className="text-[10px] text-gray-400">Capital growth vectors & e-business</p>
-                      </div>
-                    </Link>
-                    <Link to="/technology" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
-                      <div className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                        <Cpu className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-semibold text-white">Advanced Technology</p>
-                        <p className="text-[10px] text-gray-400 font-normal">Computing insights & software alignment</p>
-                      </div>
-                    </Link>
-                    <Link to="/ai" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
-                      <div className="p-1.5 bg-purple-500/20 text-purple-400 rounded-lg">
-                        <Sparkles className="h-4 w-4" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-xs font-semibold text-white">AI Studio Hub</p>
-                        <p className="text-[10px] text-gray-400 font-normal">Custom automated content creator</p>
-                      </div>
-                    </Link>
-                  </div>
-                </div>
              </div>
           </aside>
         </section>

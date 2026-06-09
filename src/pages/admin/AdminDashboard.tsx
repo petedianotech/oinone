@@ -314,9 +314,10 @@ export function AdminDashboard() {
   const chartData = processChartData();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col md:flex-row transition-colors">
+    <div className="min-h-screen bg-[#060610] text-[#f1f1f6] flex flex-col md:flex-row transition-colors selection:bg-indigo-500/30 relative">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.06),transparent_50%)] pointer-events-none" />
       {/* Sidebar Menu */}
-      <div className="w-full md:w-64 bg-gradient-to-b from-[#0a0a16] via-[#100f2e] to-[#0a0a16] border-r border-indigo-900/30 p-6 flex flex-col text-white shadow-xl relative overflow-hidden">
+      <div className="w-full md:w-64 bg-gradient-to-b from-[#0a0a16] via-[#100f2e] to-[#0a0a16] border-r border-indigo-900/30 p-6 flex flex-col text-white shadow-xl relative overflow-hidden shrink-0">
         <div className="absolute inset-x-0 top-0 h-64 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
         <div className="flex items-center gap-3 mb-10 text-indigo-400 relative z-10">
           <LayoutDashboard className="w-6 h-6" />
@@ -324,27 +325,27 @@ export function AdminDashboard() {
         </div>
         
         <nav className="flex-1 space-y-2 relative z-10">
-          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <LayoutDashboard className="w-4 h-4" /> Overview
           </button>
-          <button onClick={() => setActiveTab('ai-writer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => setActiveTab('ai-writer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <MessageSquare className="w-4 h-4" /> AI Writer
           </button>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <FileText className="w-4 h-4" /> Articles
           </button>
           
           <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-indigo-200/50 mb-2 px-2">
-            Features
+            Quick Panels
           </div>
           <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
-             <span className="w-2 h-2 rounded-full bg-emerald-400" /> Finance
+             <span className="w-2 h-2 rounded-full bg-emerald-400" /> Finance Sector
           </button>
           <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
-             <span className="w-2 h-2 rounded-full bg-blue-400" /> Technology
+             <span className="w-2 h-2 rounded-full bg-blue-400" /> Technology Hub
           </button>
           <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
-             <span className="w-2 h-2 rounded-full bg-purple-400" /> AI
+             <span className="w-2 h-2 rounded-full bg-purple-400" /> AI Systems
           </button>
         </nav>
 
@@ -354,51 +355,83 @@ export function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 md:p-10 overflow-y-auto">
-        <header className="mb-10 flex justify-between items-end">
+      <div className="flex-1 p-6 md:p-10 overflow-y-auto relative z-10 bg-[#060610]/50 backdrop-blur-3xl">
+        <div className="absolute inset-0 bg-[#060610] h-full pointer-events-none -z-10" />
+        <div className="absolute inset-x-0 -top-40 h-80 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
+        
+        <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-indigo-950/45">
           <div>
-            <h2 className="text-3xl font-display font-bold text-gray-900 dark:text-white capitalize">{activeTab}</h2>
-            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Welcome back, Peter. Here's what's happening.</p>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
+              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" /> Live Administration
+            </div>
+            <h2 className="text-3xl font-display font-extrabold text-white tracking-tight capitalize">{activeTab}</h2>
+            <p className="text-indigo-200/60 mt-1 text-sm">Welcome back, Peter Damiano. Your creative engine is fully synchronized.</p>
+          </div>
+          <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/25 px-4 py-2 rounded-xl text-xs font-semibold text-indigo-300 shadow-sm shadow-indigo-500/5">
+            <span>Secure Cloud Access</span>
           </div>
         </header>
 
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-2xl rounded-full" />
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl"><FileText className="w-6 h-6" /></div>
+                  <div className="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20"><FileText className="w-6 h-6" /></div>
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Articles</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{posts.length}</p>
+                    <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold">Total Articles</p>
+                    <p className="text-3xl font-display font-extrabold text-white mt-1">{posts.length}</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
+              
+              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 blur-2xl rounded-full" />
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-rose-50 dark:bg-rose-900/20 text-rose-600 rounded-xl"><MessageSquare className="w-6 h-6" /></div>
+                  <div className="p-3.5 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20"><MessageSquare className="w-6 h-6" /></div>
                   <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Likes</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalLikes}</p>
+                    <p className="text-xs uppercase tracking-widest text-purple-300/60 font-bold">Total Likes</p>
+                    <p className="text-3xl font-display font-extrabold text-white mt-1">{totalLikes}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300 sm:col-span-2 md:col-span-1">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-2xl rounded-full" />
+                <div className="flex items-center gap-4">
+                  <div className="p-3.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20"><Users className="w-6 h-6" /></div>
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-emerald-300/60 font-bold">Creator Profile</p>
+                    <p className="text-lg font-display font-bold text-white mt-2 truncate">Peter Damiano</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm w-full h-[400px]">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Traffic & Engagement Overview</h3>
-              <ResponsiveContainer width="100%" height="80%">
+            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl w-full h-[400px] relative overflow-hidden">
+              <div className="absolute inset-x-0 -top-32 h-64 bg-indigo-500/5 blur-3xl pointer-events-none rounded-full" />
+              <div className="flex items-center justify-between mb-6 z-10 relative">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Insight Operations</h3>
+                  <p className="text-xs text-indigo-200/50">Tracking reader sentiment & engagement metrics</p>
+                </div>
+                <div className="flex items-center gap-4 text-xs font-semibold">
+                  <span className="flex items-center gap-1.5 text-indigo-400"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Views</span>
+                  <span className="flex items-center gap-1.5 text-emerald-400"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Likes</span>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height="75%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} />
-                  <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
-                  <YAxis stroke="#6B7280" fontSize={12} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" opacity={0.3} />
+                  <XAxis dataKey="name" stroke="#657491" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#657491" fontSize={11} tickLine={false} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '8px' }}
-                    itemStyle={{ color: '#E5E7EB' }}
+                    contentStyle={{ backgroundColor: '#0c0b24', borderColor: '#2e2a75', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                    itemStyle={{ color: '#E2E8F0' }}
                   />
-                  <Line type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="likes" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="comments" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, stroke: '#6366f1', strokeWidth: 1 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="likes" stroke="#10b981" strokeWidth={3} dot={{ r: 4, stroke: '#10b981', strokeWidth: 1 }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -407,64 +440,68 @@ export function AdminDashboard() {
 
         {activeTab === 'ai-writer' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm max-w-4xl">
-              <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">AI Content Generation</h3>
+            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-8 rounded-2xl border border-indigo-900/40 shadow-xl max-w-4xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full" />
+              <h3 className="text-xl font-display font-bold mb-6 text-white flex items-center gap-2">
+                <span className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20"><MessageSquare className="w-5 h-5" /></span>
+                AI Creative Studio
+              </h3>
               {!generatedDraft ? (
-                <form onSubmit={handleGenerateAI} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <form onSubmit={handleGenerateAI} className="space-y-6 relative z-10">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Topic</label>
-                      <input type="text" required value={aiForm.topic} onChange={e => setAiForm({...aiForm, topic: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white" placeholder="e.g. Future of Generative AI" />
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Topic / Title Theme</label>
+                      <input type="text" required value={aiForm.topic} onChange={e => setAiForm({...aiForm, topic: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="e.g. Future of Generative AI" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Keyword</label>
-                      <input type="text" required value={aiForm.keyword} onChange={e => setAiForm({...aiForm, keyword: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white" placeholder="generative ai trends 2026" />
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Primary SEO Keyword</label>
+                      <input type="text" required value={aiForm.keyword} onChange={e => setAiForm({...aiForm, keyword: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="generative ai trends 2026" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
-                      <select value={aiForm.categoryId} onChange={e => setAiForm({...aiForm, categoryId: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Channel Category</label>
+                      <select value={aiForm.categoryId} onChange={e => setAiForm({...aiForm, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none">
+                        <option value="finance">Finance</option>
+                        <option value="technology">Technology</option>
+                        <option value="mmo">Make Money</option>
                         <option value="ai">AI</option>
-                        <option value="crypto">Crypto</option>
-                        <option value="startups">Startups</option>
-                        <option value="markets">Markets</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tone</label>
-                      <input type="text" value={aiForm.tone} onChange={e => setAiForm({...aiForm, tone: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Editorial Tone</label>
+                      <input type="text" value={aiForm.tone} onChange={e => setAiForm({...aiForm, tone: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Length / Style</label>
-                      <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Target Article Length</label>
+                      <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Image Selection Strategy</label>
+                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-3">Cover Art Selection Protocol</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${aiForm.imageType === 'stock' ? 'border-indigo-600 bg-indigo-500/5' : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-900'}`}>
+                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'stock' ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-950 bg-[#060610]/40 hover:bg-white/5 text-gray-300'}`}>
                           <input type="radio" name="imageType" value="stock" checked={aiForm.imageType === 'stock'} onChange={() => setAiForm({...aiForm, imageType: 'stock'})} className="text-indigo-600 focus:ring-indigo-500" />
                           <div>
-                            <span className="block font-medium text-sm text-gray-900 dark:text-white">AI Search Stock Images</span>
-                            <span className="block text-xs text-gray-500 dark:text-gray-400">Blazing fast (1-2s), real-time Unsplash query matches</span>
+                            <span className="block font-semibold text-sm text-white">AI Search Stock Images</span>
+                            <span className="block text-xs text-indigo-200/50 mt-0.5">Blazing fast, real-time handpicked matching stock photos</span>
                           </div>
                         </label>
-                        <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${aiForm.imageType === 'ai' ? 'border-indigo-600 bg-indigo-500/5' : 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 hover:bg-gray-100 dark:hover:bg-gray-900'}`}>
+                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'ai' ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-950 bg-[#060610]/40 hover:bg-white/5 text-gray-300'}`}>
                           <input type="radio" name="imageType" value="ai" checked={aiForm.imageType === 'ai'} onChange={() => setAiForm({...aiForm, imageType: 'ai'})} className="text-indigo-600 focus:ring-indigo-500" />
                           <div>
-                            <span className="block font-medium text-sm text-gray-900 dark:text-white">Custom Imagen 4.0 Art</span>
-                            <span className="block text-xs text-gray-500 dark:text-gray-400">Unique generative AI visual designs (parallel, ~8s)</span>
+                            <span className="block font-semibold text-sm text-white">Custom Imagen 4.0 Art</span>
+                            <span className="block text-xs text-indigo-200/50 mt-0.5">Unique generative AI designs tailored to topic</span>
                           </div>
                         </label>
                       </div>
                     </div>
                   </div>
-                  <div className="pt-4 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-gray-800">
+                  <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-indigo-950/45">
                     {isGenerating && (
-                      <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400 animate-pulse flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-indigo-650 animate-ping"></div>
-                        Generating premium draft, conducting SEO lookup, and securing {aiForm.imageType === 'stock' ? 'stock matching covers' : 'custom AI graphics'}...
+                      <div className="text-xs font-semibold text-indigo-400 animate-pulse flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></span>
+                        Synthesizing premium editorial content drafts and executing search engine crawl grounding...
                       </div>
                     )}
-                    <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-medium transition-colors flex items-center gap-2 ml-auto cursor-pointer">
+                    <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center gap-2 ml-auto cursor-pointer">
                        {isGenerating ? (
                          <>
                            <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin"></div>
@@ -475,19 +512,21 @@ export function AdminDashboard() {
                   </div>
                 </form>
               ) : (
-                <div className="space-y-6">
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl text-sm text-indigo-900 dark:text-indigo-200 font-mono overflow-auto max-h-40 border border-indigo-100 dark:border-indigo-800">
-                    <strong>Research Grounding Summary:</strong><br/>{generatedDraft.researchSummary}
+                <div className="space-y-6 relative z-10">
+                  <div className="bg-[#060610]/80 p-5 rounded-2xl text-xs text-indigo-200/80 font-mono overflow-auto max-h-40 border border-indigo-900/30 leading-relaxed">
+                    <strong className="text-indigo-300 text-[10px] uppercase tracking-wider font-sans block mb-1.5">Deep Research Grounding Synopsis:</strong>
+                    {generatedDraft.researchSummary}
                   </div>
                   
                   <div className="space-y-6">
                     <div>
-                      <h1 className="text-3xl font-display font-bold mb-4 text-gray-900 dark:text-white">{generatedDraft.title}</h1>
+                      <span className="text-[10px] uppercase tracking-widest bg-indigo-500/10 text-indigo-300 border border-indigo-400/20 px-2.5 py-1 rounded-full font-bold">Unreleased Draft</span>
+                      <h1 className="text-3xl font-display font-extrabold mb-4 text-white mt-3 tracking-tight">{generatedDraft.title}</h1>
                       
                       {generatedDraft.images && generatedDraft.images.length > 0 && (
                         <div className="mb-6 space-y-3">
-                          <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider">Select Cover / Featured Image</label>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <label className="block text-xs font-bold text-indigo-300/60 uppercase tracking-wider">Select Primary Cover / Featured Artwork</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {generatedDraft.images.map((imgUrl: string, idx: number) => {
                               const isSelected = activeCoverIndex === idx;
                               return (
@@ -495,15 +534,15 @@ export function AdminDashboard() {
                                   key={idx} 
                                   onClick={() => setActiveCoverIndex(idx)}
                                   className={`relative aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200 group ${
-                                    isSelected ? "border-indigo-600 scale-[1.02] shadow-md shadow-indigo-600/10" : "border-gray-200 dark:border-gray-800 hover:border-indigo-300 opacity-80 hover:opacity-100"
+                                    isSelected ? "border-indigo-500 scale-[1.02] shadow-xl shadow-indigo-500/20" : "border-indigo-950 opacity-60 hover:opacity-100 hover:border-indigo-800"
                                   }`}
                                 >
                                   <img referrerPolicy="no-referrer" src={imgUrl} alt={`Cover option ${idx + 1}`} className="w-full h-full object-cover" />
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                                    <span className="text-[10px] text-white font-medium">Use layout #{idx + 1}</span>
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5">
+                                    <span className="text-[10px] text-white font-semibold">Select Design Mockup {idx + 1}</span>
                                   </div>
                                   {isSelected && (
-                                    <div className="absolute top-2 left-2 bg-indigo-600 text-white rounded-lg p-1 text-[10px] uppercase font-bold tracking-wider px-2 shadow">Active Cover</div>
+                                    <div className="absolute top-2 left-2 bg-indigo-500 text-white rounded-lg p-1 text-[9px] uppercase font-bold tracking-wider px-2 shadow">Active Layout</div>
                                   )}
                                 </div>
                               );
@@ -513,16 +552,16 @@ export function AdminDashboard() {
                       )}
                       
                       <div className="mb-4">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Content Preview</label>
-                        <div className="prose dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800 h-96 overflow-y-auto" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
+                        <label className="block text-xs font-bold text-indigo-300/60 uppercase tracking-wider mb-2">Editorial Prose Preview</label>
+                        <div className="prose dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-[#060610]/80 border-indigo-950 text-indigo-100/90 h-96 overflow-y-auto leading-relaxed" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-800 pt-4">
-                     <button onClick={() => setGeneratedDraft(null)} className="px-5 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors cursor-pointer text-sm font-medium">Discard</button>
-                     <button onClick={() => saveAiDraft(false)} className="px-5 py-2.5 border border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-colors cursor-pointer text-sm font-medium">Save as Draft</button>
-                     <button onClick={() => saveAiDraft(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors cursor-pointer text-sm font-medium">Publish Now</button>
+                  <div className="flex justify-end gap-3 border-t border-indigo-950/40 pt-5">
+                     <button onClick={() => setGeneratedDraft(null)} className="px-5 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer text-sm font-medium">Discard</button>
+                     <button onClick={() => saveAiDraft(false)} className="px-5 py-2.5 border border-indigo-550/30 text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer text-sm font-medium">Save Offline Draft</button>
+                     <button onClick={() => saveAiDraft(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 cursor-pointer text-sm">Publish to Live Feed</button>
                   </div>
                 </div>
               )}
@@ -532,104 +571,112 @@ export function AdminDashboard() {
 
         {activeTab === 'posts' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white">Articles Database</h3>
+                <p className="text-xs text-indigo-200/50 mt-0.5">Manage and organize your published content and offline drafts</p>
+              </div>
               <button 
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+                className="flex items-center gap-2 bg-indigo-650 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> New Article
               </button>
             </div>
             
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-              <table className="w-full text-left">
-                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Views</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Likes</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comments</th>
-                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                  {posts.map(post => (
-                    <tr key={post.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="p-4 text-sm font-medium text-gray-900 dark:text-white">
-                        <div className="flex items-center gap-3">
-                          <img src={post.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                          <span className="truncate max-w-[200px] block">{post.title}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 text-sm whitespace-nowrap">
-                        {post.isDraft ? 
-                          <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded text-xs uppercase font-bold tracking-wider">Draft</span>
-                        :
-                          <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded text-xs uppercase font-bold tracking-wider">Published</span>
-                        }
-                      </td>
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400"><span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">{post.categoryId}</span></td>
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400">{post.date}</td>
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400">{post.viewsCount || 0}</td>
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400">{post.likesCount || 0}</td>
-                      <td className="p-4 text-sm text-gray-500 dark:text-gray-400">{post.commentsCount || 0}</td>
-                      <td className="p-4 text-sm text-right">
-                        {post.isDraft && (
-                          <button onClick={() => publishDraft(post.id)} className="text-indigo-600 hover:text-indigo-800 p-2 text-xs font-bold uppercase transition-colors">Publish</button>
-                        )}
-                        <button onClick={() => openEditModal(post)} className="text-indigo-600 hover:text-indigo-800 p-2 cursor-pointer transition-colors"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => deletePost(post.id)} className="text-rose-500 hover:text-rose-700 p-2 cursor-pointer transition-colors"><Trash2 className="w-4 h-4" /></button>
-                      </td>
+            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] rounded-2xl border border-indigo-900/40 shadow-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#0b0a21] border-b border-indigo-900/40">
+                    <tr>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Title</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Status</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Category</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Date</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Views</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Likes</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest text-right">Actions</th>
                     </tr>
-                  ))}
-                  {posts.length === 0 && (
-                    <tr><td colSpan={7} className="p-8 text-center text-gray-500">No articles found.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-indigo-950/40">
+                    {posts.map(post => (
+                      <tr key={post.id} className="hover:bg-indigo-500/5 transition-colors">
+                        <td className="p-4 text-sm font-semibold text-white">
+                          <div className="flex items-center gap-3">
+                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-indigo-900/40" />
+                            <span className="truncate max-w-[240px] block text-white font-medium hover:text-indigo-400 transition-colors">{post.title}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm whitespace-nowrap">
+                          {post.isDraft ? 
+                            <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/15 rounded-full text-xs font-bold tracking-wide">Draft</span>
+                          :
+                            <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 rounded-full text-xs font-bold tracking-wide">Published</span>
+                          }
+                        </td>
+                        <td className="p-4 text-xs text-gray-500">
+                          <span className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/15 text-indigo-300 rounded-md text-[11px] font-bold uppercase tracking-wider">{post.categoryId}</span>
+                        </td>
+                        <td className="p-4 text-sm text-indigo-200/60 font-medium">{post.date}</td>
+                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.viewsCount || 0}</td>
+                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.likesCount || 0}</td>
+                        <td className="p-4 text-sm text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {post.isDraft && (
+                              <button onClick={() => publishDraft(post.id)} className="text-emerald-400 hover:text-white hover:bg-emerald-500/10 px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all duration-200 cursor-pointer">Publish</button>
+                            )}
+                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {posts.length === 0 && (
+                      <tr><td colSpan={7} className="p-12 text-center text-indigo-300/40 font-medium">No articles in your pipeline yet. Sync active records, or generate fresh assets in the AI Creator studio!</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Create Post Modal */}
             {showCreateModal && (
-              <div className="fixed inset-0 bg-gray-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800 flex flex-col max-h-[90vh]">
-                  <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
-                    <h3 className="text-xl font-display font-bold text-gray-900 dark:text-white">{editingPostId ? 'Edit Article' : 'Create New Article'}</h3>
-                    <button onClick={closeCreateModal} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer">
-                      <X className="w-6 h-6" />
+              <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-indigo-900/40 flex flex-col max-h-[90vh]">
+                  <div className="flex items-center justify-between p-6 border-b border-indigo-950/40">
+                    <h3 className="text-xl font-display font-extrabold text-white tracking-tight">{editingPostId ? 'Edit Article Asset' : 'Generate New Custom Article'}</h3>
+                    <button onClick={closeCreateModal} className="text-gray-400 hover:text-white hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
-                  <div className="p-6 overflow-y-auto flex-1">
-                    <form id="create-post-form" onSubmit={handleCreatePost} className="space-y-4">
+                  <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                    <form id="create-post-form" onSubmit={handleCreatePost} className="space-y-5">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
-                        <input type="text" required value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none transition-all" />
+                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Title Profile</label>
+                        <input type="text" required value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category ID</label>
-                        <select value={newPost.categoryId} onChange={e => setNewPost({...newPost, categoryId: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none transition-all">
+                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Channel Category Destination</label>
+                        <select value={newPost.categoryId} onChange={e => setNewPost({...newPost, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none">
+                          <option value="finance">Finance</option>
+                          <option value="technology">Technology</option>
+                          <option value="mmo">Make Money</option>
                           <option value="ai">AI</option>
-                          <option value="crypto">Crypto</option>
-                          <option value="startups">Startups</option>
-                          <option value="markets">Markets</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Excerpt</label>
-                        <textarea required rows={2} value={newPost.excerpt} onChange={e => setNewPost({...newPost, excerpt: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none transition-all resize-none"></textarea>
+                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Précis / Article Excerpt</label>
+                        <textarea required rows={2} value={newPost.excerpt} onChange={e => setNewPost({...newPost, excerpt: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none"></textarea>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Content (Use double newlines for paragraphs)</label>
-                        <textarea required rows={8} value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none transition-all resize-none"></textarea>
+                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Core Article Body (Double return spacing for paragraphs)</label>
+                        <textarea required rows={8} value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none font-sans leading-relaxed"></textarea>
                       </div>
                     </form>
                   </div>
-                  <div className="p-6 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3 bg-gray-50 dark:bg-gray-900/50">
-                    <button onClick={closeCreateModal} className="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">Cancel</button>
-                    <button type="submit" form="create-post-form" className="px-5 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer">{editingPostId ? 'Save Changes' : 'Publish Article'}</button>
+                  <div className="p-6 border-t border-indigo-950/40 flex justify-end gap-3 bg-[#0a091f]">
+                    <button onClick={closeCreateModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+                    <button type="submit" form="create-post-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white tracking-wide transition-all shadow-lg hover:shadow-indigo-500/10 cursor-pointer">{editingPostId ? 'Save Edits' : 'Publish Asset'}</button>
                   </div>
                 </motion.div>
               </div>

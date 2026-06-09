@@ -29,28 +29,37 @@ function ScrollToTop() {
   return null;
 }
 
+function AppContent() {
+  const location = useLocation();
+  const isAdminPage = location.pathname === '/admin';
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
+      <Navbar />
+      <div className="flex-grow">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy-policy" element={<Privacy />} />
+          <Route path="/terms-of-service" element={<Terms />} />
+          <Route path="/disclaimer" element={<Disclaimer />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/:categoryId" element={<CategoryPage />} />
+          <Route path="/article/:articleId" element={<ArticlePage />} />
+        </Routes>
+      </div>
+      {!isAdminPage && <Footer />}
+      <PWAPrompt />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <BlogProvider>
       <Router>
         <ScrollToTop />
-        <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-          <Navbar />
-          <div className="flex-grow">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/privacy-policy" element={<Privacy />} />
-              <Route path="/terms-of-service" element={<Terms />} />
-              <Route path="/disclaimer" element={<Disclaimer />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/:categoryId" element={<CategoryPage />} />
-              <Route path="/article/:articleId" element={<ArticlePage />} />
-            </Routes>
-          </div>
-          <Footer />
-          <PWAPrompt />
-        </div>
+        <AppContent />
       </Router>
     </BlogProvider>
   );
