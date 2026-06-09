@@ -10,10 +10,9 @@ import { Post, CategoryId } from '../../types';
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'subscribers' | 'comments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'comments'>('overview');
   
   const [posts, setPosts] = useState<Post[]>([]);
-  const [subscribers, setSubscribers] = useState<any[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   // AI Writer State
@@ -52,15 +51,6 @@ export function AdminDashboard() {
     } catch (e) {
       console.error('Error fetching admin data (articles):', e);
       handleFirestoreError(e, OperationType.GET, 'articles');
-    }
-
-    try {
-      const subsSnap = await getDocs(collection(db, 'subscribers'));
-      const subsData = subsSnap.docs.map(doc => doc.data());
-      setSubscribers(subsData);
-    } catch (e) {
-      console.error('Error fetching admin data (subscribers):', e);
-      handleFirestoreError(e, OperationType.GET, 'subscribers');
     }
   };
 
@@ -124,6 +114,7 @@ export function AdminDashboard() {
     const fullPost: Post = {
       id,
       title: generatedDraft.title,
+      summary: generatedDraft.summary || generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150) + '...',
       excerpt: generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150) + '...', // Strip HTML for excerpt
       content: contentArray,
       categoryId: generatedDraft.categoryId as CategoryId,
@@ -291,64 +282,73 @@ export function AdminDashboard() {
   // Group posts by date locally
   const processChartData = () => {
     const publishedPosts = posts.filter(p => !p.isDraft);
-    if (publishedPosts.length === 0) return [];
-    
     const dateMap: Record<string, { views: number, likes: number, comments: number }> = {};
     
-    // Sort ascending for chart (chronological left to right)
-    const reversed = [...publishedPosts].reverse();
-    
-    for (const post of reversed) {
-      if (!dateMap[post.date]) {
-         dateMap[post.date] = { views: 0, likes: 0, comments: 0 };
-      }
-      dateMap[post.date].views += (post.viewsCount || 0);
-      dateMap[post.date].likes += (post.likesCount || 0);
-      dateMap[post.date].comments += (post.commentsCount || 0);
+    // Initialize the last 7 days with 0s
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      // Format as "Feb 10" or similar based on toLocaleDateString
+      const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      dateMap[dateStr] = { views: 0, likes: 0, comments: 0 };
     }
     
-    const result = Object.keys(dateMap).map(dateStr => {
-      // Just take first part of date, e.g. 'Jun 9' from 'Jun 9, 2026'
-      const label = dateStr.split(',')[0]; 
-      return {
-         name: label,
-         views: dateMap[dateStr].views,
-         likes: dateMap[dateStr].likes,
-         comments: dateMap[dateStr].comments
-      };
-    });
+    for (const post of publishedPosts) {
+      // Parse post date into matching format
+      const postDate = new Date(post.date);
+      const postDateStr = postDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      
+      if (dateMap[postDateStr]) {
+        dateMap[postDateStr].views += (post.viewsCount || 0);
+        dateMap[postDateStr].likes += (post.likesCount || 0);
+        dateMap[postDateStr].comments += (post.commentsCount || 0);
+      }
+    }
     
-    // Return last 7 distinct dates
-    return result.slice(-7);
+    return Object.keys(dateMap).map(dateStr => ({
+      name: dateStr,
+      ...dateMap[dateStr]
+    }));
   };
   
   const chartData = processChartData();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col md:flex-row transition-colors">
-      {/* Sidebar */}
-      <div className="w-full md:w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 flex flex-col">
-        <div className="flex items-center gap-3 mb-10 text-indigo-600 dark:text-indigo-400">
+      {/* Sidebar Menu */}
+      <div className="w-full md:w-64 bg-gradient-to-b from-[#0a0a16] via-[#100f2e] to-[#0a0a16] border-r border-indigo-900/30 p-6 flex flex-col text-white shadow-xl relative overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-64 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
+        <div className="flex items-center gap-3 mb-10 text-indigo-400 relative z-10">
           <LayoutDashboard className="w-6 h-6" />
-          <span className="font-display font-bold text-xl text-gray-900 dark:text-white">Admin</span>
+          <span className="font-display font-bold text-xl text-white">Admin Hub</span>
         </div>
         
-        <nav className="flex-1 space-y-2">
-          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+        <nav className="flex-1 space-y-2 relative z-10">
+          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <LayoutDashboard className="w-4 h-4" /> Overview
           </button>
-          <button onClick={() => setActiveTab('ai-writer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+          <button onClick={() => setActiveTab('ai-writer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <MessageSquare className="w-4 h-4" /> AI Writer
           </button>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <FileText className="w-4 h-4" /> Articles
           </button>
-          <button onClick={() => setActiveTab('subscribers')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'subscribers' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-            <Users className="w-4 h-4" /> Subscribers
+          
+          <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-indigo-200/50 mb-2 px-2">
+            Features
+          </div>
+          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+             <span className="w-2 h-2 rounded-full bg-emerald-400" /> Finance
+          </button>
+          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+             <span className="w-2 h-2 rounded-full bg-blue-400" /> Technology
+          </button>
+          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+             <span className="w-2 h-2 rounded-full bg-purple-400" /> AI
           </button>
         </nav>
 
-        <button onClick={handleLogout} className="mt-auto flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-500 hover:text-rose-500 transition-colors cursor-pointer">
+        <button onClick={handleLogout} className="mt-auto flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 hover:text-rose-400 transition-colors cursor-pointer relative z-10">
           <LogOut className="w-4 h-4" /> Sign Out
         </button>
       </div>
@@ -364,22 +364,13 @@ export function AdminDashboard() {
 
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl"><FileText className="w-6 h-6" /></div>
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Total Articles</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{posts.length}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-xl"><Users className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Subscribers</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{subscribers.length}</p>
                   </div>
                 </div>
               </div>
@@ -643,32 +634,6 @@ export function AdminDashboard() {
                 </motion.div>
               </div>
             )}
-          </motion.div>
-        )}
-
-        {activeTab === 'subscribers' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
-             <table className="w-full text-left">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email Address</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date Subscribed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {subscribers.map((sub, i) => (
-                  <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="p-4 text-sm font-medium text-gray-900 dark:text-white">{sub.email}</td>
-                    <td className="p-4 text-sm"><span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded text-xs uppercase tracking-wider font-bold">Active</span></td>
-                    <td className="p-4 text-sm text-gray-500 dark:text-gray-400">{new Date(sub.subscribedAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {subscribers.length === 0 && (
-                  <tr><td colSpan={3} className="p-8 text-center text-gray-500">No subscribers yet.</td></tr>
-                )}
-              </tbody>
-            </table>
           </motion.div>
         )}
       </div>

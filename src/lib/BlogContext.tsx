@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Post, CategoryId } from '../types';
-import { subscribeToArticles, subscribeNewsletter } from './blogService';
+import { subscribeToArticles } from './blogService';
 
 interface BlogContextType {
   posts: Post[];
@@ -9,7 +9,6 @@ interface BlogContextType {
   getCategoryPosts: (categoryId: CategoryId) => Post[];
   getFeaturedPosts: () => Post[];
   getTrendingPosts: () => Post[];
-  subscribeToNewsletter: (email: string) => Promise<boolean>;
 }
 
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
@@ -50,10 +49,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return posts.filter((p) => p.trending);
   };
 
-  const subscribeToNewsletter = async (email: string) => {
-    return await subscribeNewsletter(email);
-  };
-
   return (
     <BlogContext.Provider
       value={{
@@ -63,7 +58,6 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getCategoryPosts,
         getFeaturedPosts,
         getTrendingPosts,
-        subscribeToNewsletter,
       }}
     >
       {children}

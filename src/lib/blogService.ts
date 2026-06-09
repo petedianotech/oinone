@@ -126,25 +126,6 @@ export function subscribeToArticles(callback: (posts: Post[]) => void, onError: 
 }
 
 /**
- * Register a user as a newsletter subscriber.
- */
-export async function subscribeNewsletter(email: string): Promise<boolean> {
-  const normalizedEmail = email.trim().toLowerCase();
-  const path = `subscribers/${normalizedEmail}`;
-  try {
-    const subscriberRef = doc(db, 'subscribers', normalizedEmail);
-    await setDoc(subscriberRef, {
-      email: normalizedEmail,
-      subscribedAt: new Date().toISOString(),
-      status: 'active'
-    });
-    return true;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
-  }
-}
-
-/**
  * Loads interactive comments for a post in real-time.
  */
 export function subscribeToComments(postId: string, callback: (comments: CommentData[]) => void, onError: (err: Error) => void) {

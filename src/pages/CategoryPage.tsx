@@ -3,7 +3,6 @@ import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES } from '../lib/utils';
 import { CategoryId } from '../types';
 import { ArticleCard } from '../components/ArticleCard';
-import { Newsletter } from '../components/Newsletter';
 import { motion } from 'motion/react';
 
 export function CategoryPage() {
@@ -73,8 +72,6 @@ export function CategoryPage() {
           </div>
         )}
       </main>
-      
-      <Newsletter />
     </motion.div>
   );
 }

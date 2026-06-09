@@ -152,13 +152,6 @@ export function Navbar() {
             >
               <Shield className="h-5 w-5" />
             </Link>
-
-            <button 
-              onClick={() => document.getElementById('newsletter-section')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-gray-950 text-white dark:bg-white dark:text-gray-950 px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              Subscribe
-            </button>
           </div>
 
           {/* Mobile menu button */}
@@ -189,7 +182,7 @@ export function Navbar() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white dark:bg-gray-900 p-6 shadow-2xl flex flex-col lg:hidden border-l border-gray-100 dark:border-gray-800"
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-gradient-to-br from-indigo-100 via-white to-purple-100 dark:from-[#0a0a16] dark:via-[#100f2e] dark:to-[#04040d] p-6 shadow-2xl flex flex-col lg:hidden border-l border-indigo-200 dark:border-indigo-500/20"
           >
             <div className="flex justify-between items-center pb-6 border-b border-gray-100 dark:border-gray-800">
               <Link to="/" onClick={() => setIsOpen(false)} className="flex items-center gap-2">
@@ -301,16 +294,6 @@ export function Navbar() {
                 <Shield className="h-4 w-4 text-indigo-500 flex-shrink-0" />
                 <span>Admin Access</span>
               </Link>
-
-              <button 
-                onClick={() => {
-                  setIsOpen(false);
-                  document.getElementById('newsletter-section')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium p-3 rounded-xl text-sm transition-all shadow-md text-center cursor-pointer"
-              >
-                Subscribe to Newsletter
-              </button>
             </div>
           </motion.div>
         </>

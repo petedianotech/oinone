@@ -4,7 +4,7 @@ export function Footer() {
   return (
     <footer className="bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 pb-12 pt-16 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
           <div className="md:col-span-1">
             <Link to="/" className="flex items-center space-x-2 inline-block">
               <span className="font-display font-bold text-2xl tracking-tighter text-gray-950 dark:text-white">
@@ -34,16 +34,6 @@ export function Footer() {
               <li><a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Creator Portfolio</a></li>
               <li><Link to="/admin" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Admin</Link></li>
               <li><a href="mailto:petedianotech@gmail.com" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Contact</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-display font-semibold text-gray-900 dark:text-white mb-4">Connect</h3>
-            <ul className="space-y-3">
-              <li><a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Twitter X</a></li>
-              <li><a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">LinkedIn</a></li>
-              <li><a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Instagram</a></li>
-              <li><a href="#" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">RSS Feed</a></li>
             </ul>
           </div>
         </div>

@@ -1,11 +1,13 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { ArticleCard } from '../components/ArticleCard';
-import { Newsletter } from '../components/Newsletter';
-import { Flame } from 'lucide-react';
+import { Flame, Coins, Cpu, Sparkles, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Home() {
   const { posts, loading, getFeaturedPosts, getTrendingPosts } = useBlog();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   if (loading) {
     return (
@@ -21,8 +23,13 @@ export function Home() {
   const featured = getFeaturedPosts();
   const trending = getTrendingPosts();
   
-  // Exclude featured from recent to avoid duplication in this simple mock
-  const recent = posts.filter(p => !p.featured).slice(0, 6);
+  // Exclude featured from standard general listing on home load to prevent redundancy
+  const recent = posts.filter(p => !p.featured);
+  
+  // Make sure clicking any topic query filters across BOTH featured and general posts so they show up beautifully
+  const filteredRecent = selectedCategory === 'all'
+    ? recent.slice(0, 6)
+    : posts.filter(p => p.categoryId === selectedCategory).slice(0, 6);
 
   return (
     <motion.div 
@@ -52,72 +59,133 @@ export function Home() {
           {/* Latest Articles */}
           <div className="lg:col-span-8">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="font-display text-2xl font-bold text-gray-950 dark:text-white">Latest Stories</h2>
+              <h2 className="font-display text-2xl font-bold text-gray-950 dark:text-white">
+                {selectedCategory === 'all' ? 'Latest Stories' : `Latest in ${selectedCategory.toUpperCase()}`}
+              </h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {recent.map(post => (
-                <ArticleCard key={post.id} post={post} variant="standard" />
-              ))}
-            </div>
+            {filteredRecent.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {filteredRecent.map(post => (
+                  <ArticleCard key={post.id} post={post} variant="standard" />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-12 text-center transition-colors">
+                <p className="text-gray-500 dark:text-gray-400 font-medium">No articles found in this category yet. Create one in the Admin dashboard using the AI generator!</p>
+              </div>
+            )}
           </div>
 
           {/* Sidebar / Extended Content */}
           <aside className="lg:col-span-4 space-y-8">
-             {/* About Widget */}
-             <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-200">
-                <h3 className="font-display font-semibold text-lg text-gray-900 dark:text-white mb-4">About Oinone</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+             {/* About Widget - Renovated with solid premium opaque gradient */}
+             <div className="bg-gradient-to-br from-[#0b0a1d] via-[#111030] to-[#050512] rounded-2xl p-6 shadow-xl border border-indigo-900/40 text-white relative overflow-hidden transition-all duration-300">
+                <div className="absolute inset-x-0 -top-32 h-64 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
+                <h3 className="font-display font-semibold text-lg text-white mb-4 relative z-10">About Oinone</h3>
+                <p className="text-sm text-indigo-100/90 mb-4 leading-relaxed relative z-10 font-normal">
                   Oinone is a premier destination for insights on Finance, Technology, AI, and building digital wealth. Curated by Peter Damiano.
                 </p>
-                <a href="/about" className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium transition-colors">
-                  Read our story &rarr;
-                </a>
+                <Link to="/about" className="inline-flex items-center text-indigo-300 hover:text-white text-sm font-semibold transition-colors relative z-10 group">
+                  Read our story <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </Link>
              </div>
 
-             {/* Trending Widget */}
-             <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-200">
-                <div className="flex items-center space-x-2 mb-6 border-b border-gray-100 dark:border-gray-800 pb-4">
-                  <Flame className="text-orange-500 h-5 w-5" />
-                  <h3 className="font-display font-semibold text-lg text-gray-900 dark:text-white">Trending Now</h3>
+             {/* Trending Widget with Premium Solid Gradient Background */}
+             <div className="bg-gradient-to-br from-[#0b0a1d] via-[#111030] to-[#050512] rounded-2xl p-6 shadow-xl border border-indigo-900/40 text-white relative overflow-hidden transition-all duration-300">
+                <div className="absolute inset-x-0 -top-32 h-64 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
+                <div className="flex items-center space-x-2 mb-6 border-b border-white/10 pb-4 relative z-10">
+                  <Flame className="text-amber-500 h-5 w-5 animate-pulse" />
+                  <h3 className="font-display font-semibold text-lg text-white">Trending Now</h3>
+                  <span className="ml-auto text-[10px] uppercase font-bold tracking-widest bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/20">
+                    Premium
+                  </span>
                 </div>
-                <div className="flex flex-col gap-6">
-                  {trending.map((post, i) => (
+                <div className="flex flex-col gap-5 relative z-10">
+                  {trending.slice(0, 5).map((post, i) => (
                     <div key={post.id} className="flex gap-4">
-                       <span className="text-3xl font-display font-bold text-gray-200 dark:text-gray-800 leading-none">
+                       <span className="text-2xl font-display font-black text-indigo-400/30 leading-none pt-1">
                         0{i + 1}
-                      </span>
-                      <ArticleCard post={post} variant="compact" />
+                       </span>
+                       <ArticleCard post={post} variant="compact" theme="dark" className="flex-1" />
                     </div>
                   ))}
                 </div>
              </div>
              
-             {/* Categories Widget */}
-             <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-200 sticky top-24">
-                <h3 className="font-display font-semibold text-lg text-gray-900 dark:text-white mb-4">Explore Topics</h3>
-                <div className="flex flex-wrap gap-2">
+             {/* Explore Topics Widget with Premium Solid Gradient Background & Feature Integrations */}
+             <div className="bg-gradient-to-br from-[#0b0a1d] via-[#111030] to-[#050512] rounded-2xl p-6 shadow-xl border border-indigo-900/40 text-white relative overflow-hidden transition-all duration-300 sticky top-24">
+                <div className="absolute inset-x-0 -top-32 h-64 bg-purple-500/10 blur-3xl pointer-events-none rounded-full" />
+                <h3 className="font-display font-semibold text-lg text-white mb-2 relative z-10">Explore Topics</h3>
+                <p className="text-xs text-indigo-200/60 mb-4 relative z-10">Select a category to filter stories</p>
+                <div className="flex flex-wrap gap-2 relative z-10 mb-6 pb-6 border-b border-white/10">
+                  <button 
+                    onClick={() => setSelectedCategory('all')}
+                    className={`px-3 py-1.5 transition-all text-xs font-semibold rounded-lg shadow-sm border cursor-pointer ${
+                      selectedCategory === 'all'
+                        ? 'bg-indigo-500 border-indigo-500 text-white'
+                        : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    All Topics
+                  </button>
                   {[
-                    { name: 'Finance', path: '/finance' },
-                    { name: 'Technology', path: '/technology' },
-                    { name: 'Make Money', path: '/mmo' },
-                    { name: 'AI', path: '/ai' }
+                    { id: 'finance', name: 'Finance' },
+                    { id: 'technology', name: 'Technology' },
+                    { id: 'mmo', name: 'Make Money' },
+                    { id: 'ai', name: 'AI' }
                   ].map(topic => (
-                    <a 
-                      key={topic.name} 
-                      href={topic.path} 
-                      className="px-3 py-1.5 bg-gray-50 dark:bg-gray-950 border border-gray-100 dark:border-gray-800 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                    <button 
+                      key={topic.id} 
+                      onClick={() => setSelectedCategory(topic.id)} 
+                      className={`px-3 py-1.5 transition-all text-xs font-semibold rounded-lg shadow-sm border cursor-pointer ${
+                        selectedCategory === topic.id
+                          ? 'bg-indigo-500 border-indigo-500 text-white'
+                          : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+                      }`}
                     >
                       {topic.name}
-                    </a>
+                    </button>
                   ))}
+                </div>
+
+                {/* Built-in Premium Feature Menu Shortcuts */}
+                <div className="relative z-10 space-y-4">
+                  <h4 className="font-display text-[10px] uppercase font-bold tracking-widest text-indigo-300/80 mb-2">Platform Channels</h4>
+                  <div className="space-y-2.5">
+                    <Link to="/finance" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
+                      <div className="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg">
+                        <Coins className="h-4 w-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-semibold text-white">Finance & Markets</p>
+                        <p className="text-[10px] text-gray-400">Capital growth vectors & e-business</p>
+                      </div>
+                    </Link>
+                    <Link to="/technology" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
+                      <div className="p-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                        <Cpu className="h-4 w-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-semibold text-white">Advanced Technology</p>
+                        <p className="text-[10px] text-gray-400 font-normal">Computing insights & software alignment</p>
+                      </div>
+                    </Link>
+                    <Link to="/ai" className="flex items-center gap-3 bg-white/5 p-2.5 rounded-xl border border-white/5 hover:bg-white/10 transition-all block">
+                      <div className="p-1.5 bg-purple-500/20 text-purple-400 rounded-lg">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-xs font-semibold text-white">AI Studio Hub</p>
+                        <p className="text-[10px] text-gray-400 font-normal">Custom automated content creator</p>
+                      </div>
+                    </Link>
+                  </div>
                 </div>
              </div>
           </aside>
         </section>
 
       </main>
-
-      <Newsletter />
     </motion.div>
   );
 }

@@ -125,7 +125,10 @@ Focus on structured format:
 After the content, on a new line, provide exactly 1-3 suggested image prompts based on the article sections, formatted exactly like:
 IMAGE_PROMPT: [prompt 1]
 IMAGE_PROMPT: [prompt 2] (optional)
-IMAGE_PROMPT: [prompt 3] (optional)`;
+IMAGE_PROMPT: [prompt 3] (optional)
+
+Additionally, provide a simple English summary (easy to understand) of the article at the very end formatted like this:
+SUMMARY: [your simple English summary]`;
 
     const writeResponse = await generateContentWithRetry({
       model: "gemini-3.5-flash",
@@ -142,8 +145,19 @@ IMAGE_PROMPT: [prompt 3] (optional)`;
       imagePrompts.push(match[1].trim());
     }
 
-    // Clean up content from the IMAGE_PROMPT lines
-    const cleanContent = fullContent.replace(/IMAGE_PROMPT:\s*(.*)/g, '').trim();
+    // Parse summary
+    let summary = "";
+    const summaryRegex = /SUMMARY:\s*([\s\S]*)/;
+    const summaryMatch = summaryRegex.exec(fullContent);
+    if (summaryMatch) {
+      summary = summaryMatch[1].trim();
+    }
+
+    // Clean up content from the IMAGE_PROMPT and SUMMARY lines
+    const cleanContent = fullContent
+      .replace(/IMAGE_PROMPT:\s*(.*)/g, '')
+      .replace(/SUMMARY:\s*([\s\S]*)/, '')
+      .trim();
 
     // Step 3: Image Acquisition Phase
     let generatedImages: string[] = [];
@@ -205,6 +219,7 @@ IMAGE_PROMPT: [prompt 3] (optional)`;
     res.json({
       title,
       content: cleanContent,
+      summary,
       researchSummary: researchData,
       images: generatedImages,
       author: "Peter Damiano",

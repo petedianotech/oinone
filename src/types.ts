@@ -11,6 +11,7 @@ export interface Post {
   id: string;
   title: string;
   excerpt: string;
+  summary?: string;
   content: string[]; // Simple string array for paragraphs for mock purpose
   categoryId: CategoryId;
   author: Author;

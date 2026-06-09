@@ -10,9 +10,10 @@ interface ArticleCardProps {
   post: Post;
   variant?: 'featured' | 'compact' | 'standard';
   className?: string;
+  theme?: 'light' | 'dark';
 }
 
-export function ArticleCard({ post, variant = 'standard', className }: ArticleCardProps) {
+export function ArticleCard({ post, variant = 'standard', className, theme = 'light' }: ArticleCardProps) {
   const category = CATEGORIES[post.categoryId];
 
   if (variant === 'featured') {
@@ -46,7 +47,12 @@ export function ArticleCard({ post, variant = 'standard', className }: ArticleCa
             <img src={post.author.avatar} alt={post.author.name} className="h-8 w-8 rounded-full border border-white/20" />
             <span className="text-sm font-medium text-white">{post.author.name}</span>
             <span className="text-sm text-gray-400">&bull;</span>
-            <span className="text-sm text-gray-400">{post.date}</span>
+            <span className="text-sm text-gray-400">{new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+          </div>
+          <div className="mt-4 hidden sm:block">
+            <span className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">
+              Read article
+            </span>
           </div>
         </div>
       </Link>
@@ -54,26 +60,32 @@ export function ArticleCard({ post, variant = 'standard', className }: ArticleCa
   }
 
   if (variant === 'compact') {
+    const isDark = theme === 'dark';
     return (
       <Link to={`/article/${post.id}`} className={cn("group flex gap-4 items-start", className)}>
-        <div className="relative h-24 w-24 sm:h-32 sm:w-32 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+        <div className="relative h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
            <img 
             src={post.imageUrl} 
             alt={post.title} 
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         </div>
-        <div className="flex flex-col justify-center gap-1">
-          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
+        <div className="flex flex-col justify-center gap-0.5">
+          <p className={cn("text-xs font-semibold uppercase tracking-wider", isDark ? "text-indigo-300" : "text-indigo-600 dark:text-indigo-400")}>
             {category.name}
           </p>
-          <h3 className="font-display text-base sm:text-lg font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight line-clamp-2">
+          <h3 className={cn("font-display text-sm sm:text-base font-semibold leading-tight line-clamp-2 transition-colors", isDark ? "text-white group-hover:text-amber-300" : "text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400")}>
             {post.title}
           </h3>
-          <div className="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400 space-x-2">
+          <div className={cn("flex items-center mt-1 text-[11px] space-x-1.5", isDark ? "text-gray-300" : "text-gray-500 dark:text-gray-400")}>
             <span>{post.author.name}</span>
             <span>&bull;</span>
-            <span>{post.date}</span>
+            <span>{new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+          </div>
+          <div className="mt-1">
+             <span className={cn("text-xs font-semibold hover:underline", isDark ? "text-amber-300" : "text-indigo-600 dark:text-indigo-400")}>
+               Read article &rarr;
+             </span>
           </div>
         </div>
       </Link>
@@ -113,7 +125,12 @@ export function ArticleCard({ post, variant = 'standard', className }: ArticleCa
             <img src={post.author.avatar} alt={post.author.name} className="h-6 w-6 rounded-full" />
             <span className="text-sm font-medium text-gray-900 dark:text-gray-300">{post.author.name}</span>
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{post.date}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        </div>
+        <div className="mt-4 text-center">
+           <span className="inline-flex w-full items-center justify-center px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition">
+              Read article
+           </span>
         </div>
       </div>
     </motion.div>

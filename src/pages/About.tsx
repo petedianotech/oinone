@@ -1,6 +1,5 @@
 import { motion } from 'motion/react';
 import { Mail, Globe, Code2, Cpu, Rocket, ShieldCheck } from 'lucide-react';
-import { Newsletter } from '../components/Newsletter';
 
 export function About() {
   const labProjects = [
@@ -28,9 +27,9 @@ export function About() {
               className="relative w-48 h-48 rounded-full overflow-hidden border-4 border-indigo-600 shadow-xl"
             >
               <img 
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop" 
+                src="https://i.ibb.co/cXpLmLVC/20260516-210805.jpg" 
                 alt="Peter Damiano (petediano)" 
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover font-sans"
               />
             </motion.div>
             <h2 className="mt-6 font-display font-bold text-2xl text-gray-950 dark:text-white">Peter Damiano</h2>
@@ -123,7 +122,6 @@ export function About() {
         </section>
 
       </div>
-      <Newsletter />
     </motion.div>
   );
 }

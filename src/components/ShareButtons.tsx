@@ -103,7 +103,7 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
               className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs cursor-pointer transition-all ${platform.color}`}
             >
               {platform.icon}
-              <span>{platform.name}</span>
+              {platform.name !== 'X' && <span>{platform.name}</span>}
             </motion.div>
           </a>
         ))}

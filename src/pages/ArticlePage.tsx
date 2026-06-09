@@ -1,13 +1,12 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn } from '../lib/utils';
-import { Clock, Facebook, Twitter, Linkedin, Link as LinkIcon, ArrowLeft, Heart, MessageSquare, Send } from 'lucide-react';
-import { Newsletter } from '../components/Newsletter';
+import { Clock, Facebook, Twitter, Linkedin, Link as LinkIcon, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { ShareButtons } from '../components/ShareButtons';
 import { motion, useScroll, useSpring } from 'motion/react';
 import React, { useState, useEffect } from 'react';
-import { subscribeToComments, addPostComment, togglePostLike, getPostLikeStatus, CommentData, incrementPostViews } from '../lib/blogService';
+import { subscribeToComments, addPostComment, togglePostLike, CommentData, incrementPostViews } from '../lib/blogService';
 
 export function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>();
@@ -25,8 +24,31 @@ export function ArticlePage() {
   const [newCommentContent, setNewCommentContent] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   
-  const [isLiked, setIsLiked] = useState(false);
   const [likesCount, setLikesCount] = useState<number | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [reactions, setReactions] = useState<{
+    like: boolean;
+    informative: boolean;
+    inspiring: boolean;
+    mindBlown: boolean;
+  }>(() => {
+    try {
+      const saved = localStorage.getItem(`reactions_${articleId}`);
+      return saved ? JSON.parse(saved) : { like: false, informative: false, inspiring: false, mindBlown: false };
+    } catch {
+      return { like: false, informative: false, inspiring: false, mindBlown: false };
+    }
+  });
+
+  // Update reactions state if articleId changes to prevent stale data when navigating between related articles
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`reactions_${articleId}`);
+      setReactions(saved ? JSON.parse(saved) : { like: false, informative: false, inspiring: false, mindBlown: false });
+    } catch {
+      setReactions({ like: false, informative: false, inspiring: false, mindBlown: false });
+    }
+  }, [articleId]);
 
   // 1. Hook up listeners for dynamic comments and like status
   useEffect(() => {
@@ -43,10 +65,6 @@ export function ArticlePage() {
         console.error('[ArticlePage]: Loading comment thread. Default to empty.', error);
       }
     );
-
-    getPostLikeStatus(articleId).then((liked) => {
-      setIsLiked(liked);
-    }).catch(err => console.log('Checking like cookie:', err));
 
     return () => unsubscribeComments();
   }, [articleId]);
@@ -76,14 +94,49 @@ export function ArticlePage() {
   const relatedPosts = posts.filter(p => p.id !== post.id).slice(0, 3);
   const currentUrl = window.location.href;
 
-  const handleLikeToggle = async () => {
+  // We distribute activeLikesCount across 4 reaction types so they scale realistically with popularity
+  const getReactionCount = (type: 'like' | 'informative' | 'inspiring' | 'mindBlown') => {
+    let base = 0;
+    // Deterministic distribution based on total article upvotes/likes
+    if (type === 'like') {
+      base = Math.max(1, Math.floor(activeLikesCount * 0.4));
+    } else if (type === 'informative') {
+      base = Math.max(0, Math.floor(activeLikesCount * 0.3));
+    } else if (type === 'inspiring') {
+      base = Math.max(0, Math.floor(activeLikesCount * 0.2));
+    } else if (type === 'mindBlown') {
+      base = Math.max(0, Math.floor(activeLikesCount * 0.1));
+    }
+
+    // fallback padding to ensure at least some count for interactive feel
+    if (activeLikesCount > 0 && base === 0 && type === 'informative') {
+      base = 1;
+    }
+
+    const userReacted = reactions[type];
+    return base + (userReacted ? 1 : 0);
+  };
+
+  const handleReact = async (type: 'like' | 'informative' | 'inspiring' | 'mindBlown') => {
     if (!articleId) return;
+    
+    const tokenKey = `reactions_${articleId}`;
+    const newStatus = !reactions[type];
+    const updated = { ...reactions, [type]: newStatus };
+    
+    setReactions(updated);
     try {
+      localStorage.setItem(tokenKey, JSON.stringify(updated));
+    } catch (err) {
+      console.warn("localStorage not accessible", err);
+    }
+
+    try {
+      // Toggle the post upvote in DB to increment/decrement the SEO metrics on Firestore
       const result = await togglePostLike(articleId);
-      setIsLiked(result.liked);
       setLikesCount(result.count);
     } catch (e) {
-      console.error('[ArticlePage Like Action FAILED!]:', e);
+      console.error('[ArticlePage reacting action error]:', e);
     }
   };
 
@@ -143,31 +196,76 @@ export function ArticlePage() {
             <img src={post.author.avatar} alt={post.author.name} className="h-12 w-12 rounded-full border border-gray-150 dark:border-gray-800" />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">{post.author.name}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{post.author.role} &bull; {post.date}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{post.author.role} &bull; {new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Real-time Integrated Upvote/Like Action */}
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleLikeToggle}
-              id="article-like-button"
-              className={cn(
-                "flex items-center space-x-2 px-4 py-2 rounded-full border text-xs font-medium transition-all pointer-events-auto cursor-pointer",
-                isLiked 
-                  ? "bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-950/20 dark:border-rose-950/40 dark:text-rose-450" 
-                  : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-white"
-              )}
-            >
-              <Heart className={cn("h-4 w-4", isLiked ? "fill-rose-550 stroke-rose-550" : "")} />
-              <span>{activeLikesCount === 0 && !isLiked ? "Like post" : `${activeLikesCount} upvotes`}</span>
-            </motion.button>
+            {/* 4 Feature Engagement Reactions */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Thumbs Up (Like) */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleReact('like')}
+                className={cn(
+                  "flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer",
+                  reactions.like
+                    ? "bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950/20 dark:border-blue-900/40 dark:text-blue-400 shadow-sm"
+                    : "bg-white border-gray-250 text-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-white"
+                )}
+                title="Thumbs Up"
+              >
+                <ThumbsUp className={cn("h-3.5 w-3.5", reactions.like ? "fill-blue-500 stroke-blue-500" : "")} />
+                <span>👍 {getReactionCount('like')}</span>
+              </motion.button>
 
-            <div className="flex items-center space-x-2">
-              <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(post.title)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"><Twitter className="h-4 w-4" /></a>
-              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"><Facebook className="h-4 w-4" /></a>
-              <a href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(currentUrl)}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors"><Linkedin className="h-4 w-4" /></a>
+              {/* Informative */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleReact('informative')}
+                className={cn(
+                  "flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer",
+                  reactions.informative
+                    ? "bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 shadow-sm"
+                    : "bg-white border-gray-250 text-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-white"
+                )}
+                title="Informative"
+              >
+                <Lightbulb className={cn("h-3.5 w-3.5", reactions.informative ? "fill-amber-500 stroke-amber-500" : "")} />
+                <span>💡 {getReactionCount('informative')}</span>
+              </motion.button>
+
+              {/* Inspiring */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleReact('inspiring')}
+                className={cn(
+                  "flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer",
+                  reactions.inspiring
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-400 shadow-sm"
+                    : "bg-white border-gray-250 text-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-white"
+                )}
+                title="Inspiring"
+              >
+                <Rocket className={cn("h-3.5 w-3.5", reactions.inspiring ? "fill-emerald-500 stroke-emerald-500" : "")} />
+                <span>🚀 {getReactionCount('inspiring')}</span>
+              </motion.button>
+
+              {/* Mind-blown */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleReact('mindBlown')}
+                className={cn(
+                  "flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer",
+                  reactions.mindBlown
+                    ? "bg-purple-50 border-purple-200 text-purple-600 dark:bg-purple-950/20 dark:border-purple-900/40 dark:text-purple-400 shadow-sm"
+                    : "bg-white border-gray-250 text-gray-600 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-850 dark:hover:text-white"
+                )}
+                title="Mind-blown"
+              >
+                <Sparkles className={cn("h-3.5 w-3.5", reactions.mindBlown ? "fill-purple-500 stroke-purple-500" : "")} />
+                <span>😮 {getReactionCount('mindBlown')}</span>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -175,10 +273,36 @@ export function ArticlePage() {
 
       {/* Hero Image */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
-        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative">
           <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+          
+          {post.summary && (
+             <div className="absolute top-4 right-4 z-10">
+               <button 
+                 onClick={() => setShowSummary(!showSummary)}
+                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-lg backdrop-blur-md transition cursor-pointer"
+               >
+                 {showSummary ? "Hide Summary" : "Summarise (Simple English)"}
+               </button>
+             </div>
+          )}
         </div>
       </div>
+
+      {post.summary && showSummary && (
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 mb-12">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-2xl"
+          >
+             <h3 className="text-lg font-display font-bold text-indigo-900 dark:text-indigo-200 mb-2">Article Summary</h3>
+             <p className="text-indigo-800 dark:text-indigo-300 leading-relaxed text-sm">
+                {post.summary}
+             </p>
+          </motion.div>
+        </div>
+      )}
 
       {/* Article Body */}
       <article className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 prose prose-lg prose-indigo dark:prose-invert prose-headings:font-display prose-headings:tracking-tight text-gray-800 dark:text-gray-200 leading-relaxed">
@@ -314,8 +438,6 @@ export function ArticlePage() {
           </div>
         </div>
       </div>
-
-      <Newsletter />
     </div>
   );
 }
