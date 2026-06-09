@@ -20,30 +20,66 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function isBlogAdmin() {
+      return request.auth != null && 
+             request.auth.token.email == "petedianotech@gmail.com" && 
+             request.auth.token.email_verified == true;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll(['id', 'title', 'excerpt', 'content', 'categoryId', 'author', 'date', 'readTime', 'imageUrl', 'featured', 'trending', 'likesCount']) &&
+             data.keys().size() == 12 &&
+             data.id is string && data.id.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.excerpt is string && data.excerpt.size() <= 500 &&
+             data.content is list && data.content.size() <= 100 &&
+             data.categoryId is string && data.categoryId.size() <= 50 &&
+             data.author is map &&
+             data.author.keys().hasAll(['id', 'name', 'avatar', 'role']) &&
+             data.author.keys().size() == 4 &&
+             data.author.id is string && data.author.id.size() <= 50 &&
+             data.author.name is string && data.author.name.size() <= 100 &&
+             data.author.avatar is string && data.author.avatar.size() <= 500 &&
+             data.author.role is string && data.author.role.size() <= 100 &&
+             data.date is string && data.date.size() <= 50 &&
+             data.readTime is int && data.readTime >= 0 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1000 &&
+             data.featured is bool &&
+             data.trending is bool &&
+             data.likesCount is int && data.likesCount >= 0;
+    }
+
     // 1. Articles Collection rules
     match /articles/{postId} {
       allow read: if true;
-      allow create, update, delete: if false; // System/Console-only writes to protect integrity of published content
+      allow create: if isValidId(postId) && isValidPost(incoming());
+      allow update: if isValidId(postId) && (isBlogAdmin() || (
+        incoming().diff(existing()).affectedKeys().hasOnly(['likesCount'])
+      ));
+      allow delete: if isValidId(postId) && isBlogAdmin();
 
       // 2. Comments on individual articles
       match /comments/{commentId} {
         allow read: if true;
         allow create: if 
           isValidId(commentId) &&
-          incoming().keys().hasAll(['id', 'postId', 'authorName', 'content', 'createdAt']) &&
-          incoming().keys().size() == 5 &&
+          incoming().keys().hasAll(['id', 'postId', 'authorName', 'authorAvatar', 'content', 'createdAt']) &&
+          incoming().keys().size() == 6 &&
           incoming().id == commentId &&
           incoming().postId == postId &&
           incoming().authorName is string &&
           incoming().authorName.size() >= 2 &&
           incoming().authorName.size() <= 100 &&
+          incoming().authorAvatar is string &&
+          incoming().authorAvatar.size() <= 600 &&
           incoming().content is string &&
           incoming().content.size() >= 1 &&
           incoming().content.size() <= 2000 &&
           incoming().createdAt is string &&
           incoming().createdAt.size() <= 50;
 
-        allow update, delete: if false; // Comments, once posted, are read-only
+        allow update: if false; // Comments, once posted, are read-only
+        allow delete: if isBlogAdmin(); // Admins can delete comments
       }
 
       // 3. Likes subcollection to support article interactions
@@ -67,11 +103,11 @@ service cloud.firestore {
 
     // 4. Newsletter Subscribers Collection rules (Protecting list privacy)
     match /subscribers/{email} {
-      allow read, update, delete: if false; // Block user-facing read queries to prevent email harvesting
+      allow read, update, delete: if isBlogAdmin(); // Allow admins to read/update/delete subscribers
       allow create: if
         email is string &&
         email.size() <= 150 &&
-        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-0.-]+\\.[a-zA-Z]{2,}$') &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
         incoming().keys().hasAll(['email', 'subscribedAt', 'status']) &&
         incoming().keys().size() == 3 &&
         incoming().email == email &&

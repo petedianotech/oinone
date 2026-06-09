@@ -13,6 +13,7 @@ import { ArticlePage } from './pages/ArticlePage';
 import { About } from './pages/About';
 import { Privacy } from './pages/Privacy';
 import { Terms } from './pages/Terms';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/about" element={<About />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/:categoryId" element={<CategoryPage />} />
               <Route path="/article/:articleId" element={<ArticlePage />} />
             </Routes>

@@ -204,8 +204,9 @@ export async function togglePostLike(postId: string): Promise<{ liked: boolean, 
     const postRef = doc(db, 'articles', postId);
     
     let isLiked = false;
+    const isAlreadyLiked = likeDoc.exists() && likeDoc.data()?.likesCount === 1;
     
-    if (likeDoc.exists()) {
+    if (isAlreadyLiked) {
       // Already liked, so remove it (dislike)
       await setDoc(likeRef, {
         id: likeId,

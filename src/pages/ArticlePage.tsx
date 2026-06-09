@@ -26,7 +26,7 @@ export function ArticlePage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const [likesCount, setLikesCount] = useState<number | null>(null);
 
   // 1. Hook up listeners for dynamic comments and like status
   useEffect(() => {
@@ -68,7 +68,7 @@ export function ArticlePage() {
   }
 
   // Handle setting initial count or changes of likes
-  const activeLikesCount = likesCount !== undefined ? likesCount : (post.likesCount || 0);
+  const activeLikesCount = likesCount !== null ? likesCount : (post.likesCount || 0);
 
   const category = CATEGORIES[post.categoryId];
   const relatedPosts = posts.filter(p => p.id !== post.id).slice(0, 3);
