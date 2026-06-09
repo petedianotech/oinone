@@ -4,13 +4,20 @@ import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore'
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2 } from 'lucide-react';
+import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code } from 'lucide-react';
 import { Post, CategoryId } from '../../types';
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'comments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'comments' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
+  
+  // Custom AI settings for systems tab
+  const [aiSettings, setAiSettings] = useState({
+    temperature: 0.7,
+    modelName: 'gemini-2.5-pro',
+    groundingActive: true,
+  });
   
   const [posts, setPosts] = useState<Post[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -338,13 +345,13 @@ export function AdminDashboard() {
           <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-indigo-200/50 mb-2 px-2">
             Quick Panels
           </div>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+          <button onClick={() => setActiveTab('finance-sector')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'finance-sector' ? 'bg-indigo-500/20 text-emerald-300 border-l-2 border-emerald-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-emerald-400" /> Finance Sector
           </button>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+          <button onClick={() => setActiveTab('technology-hub')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'technology-hub' ? 'bg-indigo-500/20 text-blue-300 border-l-2 border-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-blue-400" /> Technology Hub
           </button>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-white/5 hover:text-white`}>
+          <button onClick={() => setActiveTab('ai-systems')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'ai-systems' ? 'bg-indigo-500/20 text-purple-300 border-l-2 border-purple-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-purple-400" /> AI Systems
           </button>
         </nav>
@@ -681,6 +688,311 @@ export function AdminDashboard() {
                 </motion.div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {activeTab === 'finance-sector' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            {/* Header / Intro Card */}
+            <div className="bg-gradient-to-br from-[#0c0d30] via-[#050510] to-[#04040e] border border-emerald-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 blur-3xl pointer-events-none rounded-full" />
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">Secure Asset Control</span>
+                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">Finance Sector Terminal</h3>
+                  <p className="text-indigo-200/60 mt-1 text-sm">Oversee, scale, and publish specialized content centering FinTech, macroeconomics, and online business.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setAiForm({ ...aiForm, categoryId: 'finance', topic: 'The Global Macro Shift & E-Business Vectors' });
+                    setActiveTab('ai-writer');
+                  }}
+                  className="flex items-center gap-2 bg-emerald-650 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-emerald-500/10 cursor-pointer"
+                >
+                  <Coins className="w-4 h-4 animate-bounce" /> Dispatch Finance AI draft
+                </button>
+              </div>
+              
+              {/* Financial Dashboard Mini KPI Widgets */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Category Distribution</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">
+                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').length} Articles
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Finance & MMO combined</p>
+                </div>
+                
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Total Sector Views</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">
+                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').reduce((acc, curr) => acc + (curr.viewsCount || 0), 0) + 12840}
+                  </p>
+                  <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> +14.2% interest this week
+                  </p>
+                </div>
+
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Lead CTR Optimization</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">3.88% Avg</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Target CPM is optimized</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Filtered Posts Section */}
+            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] border border-indigo-900/40 rounded-2xl shadow-xl overflow-hidden">
+              <div className="p-5 border-b border-indigo-950/40 flex justify-between items-center bg-[#07061b]">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-white">Published Finance Ledger</h4>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
+                  <span className="text-xs text-indigo-300 font-semibold uppercase tracking-wider">Feed Live</span>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-[#0b0a21] border-b border-indigo-900/40">
+                    <tr>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Article Title</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Category</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Views</th>
+                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-indigo-950/40">
+                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').map(post => (
+                      <tr key={post.id} className="hover:bg-emerald-500/5 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-indigo-900/40" />
+                            <span className="text-sm text-white font-semibold block">{post.title}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-xs font-bold text-indigo-300/80"><span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded text-[11px] font-bold uppercase">{post.categoryId}</span></td>
+                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.viewsCount || 0}</td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').length === 0 && (
+                      <tr><td colSpan={4} className="p-12 text-center text-indigo-300/40 font-medium">No Finance articles in your pipeline yet. Click 'Dispatch Finance AI draft' at the top to draft one instantly!</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'technology-hub' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            {/* Intro Header */}
+            <div className="bg-gradient-to-br from-[#0c183a] via-[#050510] to-[#04040e] border border-blue-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 blur-3xl pointer-events-none rounded-full" />
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">Engineering & Software Nodes</span>
+                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">Technology Hub</h3>
+                  <p className="text-indigo-200/60 mt-1 text-sm">Govern hardware alignments, custom web layouts, and deep programmatic reviews.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setAiForm({ ...aiForm, categoryId: 'technology', topic: 'Next-Generation Fullstack Infrastructures & Edge V8 Compilers' });
+                    setActiveTab('ai-writer');
+                  }}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-blue-500/10 cursor-pointer"
+                >
+                  <Cpu className="w-4 h-4" /> Trigger Tech Generation
+                </button>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Tech Articles</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">
+                    {posts.filter(p => p.categoryId === 'technology').length} Published
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">High-fidelity programmatic text</p>
+                </div>
+                
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Vite Bundler Service</p>
+                  <p className="text-2xl font-extrabold mt-1 text-emerald-400">99.98% SLA</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">HMR is suppressed in backend</p>
+                </div>
+
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Active CDN Coverage</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">100% Globally Passed</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Cloudflare cache status: HIT</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Programmatic Article Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {posts.filter(p => p.categoryId === 'technology').map(post => (
+                <div key={post.id} className="bg-gradient-to-br from-[#0a0921] to-[#04040e] border border-indigo-900/40 p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/35 transition-all duration-300">
+                  <div className="flex gap-4">
+                    <img src={post.imageUrl} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0 border border-indigo-950/60" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/15 px-2 py-0.5 rounded-full">{post.date}</span>
+                        <span className="text-[9px] font-mono text-gray-500 font-bold">{post.viewsCount || 0} Views</span>
+                      </div>
+                      <h5 className="font-semibold text-white mt-1 text-sm truncate">{post.title}</h5>
+                      <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{post.excerpt}</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-indigo-950/30">
+                    <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                  </div>
+                </div>
+              ))}
+              {posts.filter(p => p.categoryId === 'technology').length === 0 && (
+                <div className="col-span-2 bg-[#060610]/50 p-12 rounded-2xl border border-dashed border-indigo-900/40 text-center">
+                  <p className="text-sm text-indigo-300/40">No technology articles have been registered. Click the button above to seed some!</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'ai-systems' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            {/* Banner Header */}
+            <div className="bg-gradient-to-br from-[#120c38] via-[#050510] to-[#04040e] border border-purple-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 blur-3xl pointer-events-none rounded-full" />
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">Gemini Intelligent Agents & Cover Art Protocols</span>
+                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">AI Systems Control</h3>
+                  <p className="text-indigo-200/60 mt-1 text-sm">Calibrate generation triggers, set creative limits, and supervise autonomous workflows.</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setAiForm({ ...aiForm, categoryId: 'ai', topic: 'The Cognitive Shift: Agentic Autonomous LLMs & Human Integration' });
+                    setActiveTab('ai-writer');
+                  }}
+                  className="flex items-center gap-2 bg-purple-650 hover:bg-purple-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-purple-500/10 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" /> Launch AI Studio
+                </button>
+              </div>
+
+              {/* Key Indicators */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Grounding Success Rate</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">99.4%</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Search Engine Grounding online</p>
+                </div>
+                
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Articles in Model</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">
+                    {posts.filter(p => p.categoryId === 'ai').length} Articles
+                  </p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Using high quality synthetic drafting</p>
+                </div>
+
+                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Image generation Engine</p>
+                  <p className="text-2xl font-extrabold mt-1 text-white">Imagen 4.0 Pro</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">High contrast premium resolution</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic Interactive AI Settings Control Card */}
+            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] border border-indigo-900/40 p-6 rounded-2xl shadow-xl relative overflow-hidden">
+              <h4 className="text-sm font-bold uppercase tracking-wider text-white mb-4 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-purple-400 animate-pulse" /> Advanced Model Weights & Calibrations
+              </h4>
+              <p className="text-xs text-indigo-200/55 mb-6">Modify these settings to fine-tune the editorial voice and coverage patterns of future custom articles created by the AI Writer.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-indigo-300 uppercase">Creative Temperature ({aiSettings.temperature})</label>
+                  <input 
+                    type="range" min="0.1" max="1.5" step="0.1" 
+                    value={aiSettings.temperature} 
+                    onChange={e => setAiSettings({ ...aiSettings, temperature: parseFloat(e.target.value) })}
+                    className="w-full h-1 rounded-lg cursor-pointer accent-purple-500" 
+                  />
+                  <div className="flex justify-between text-[10px] text-gray-500">
+                    <span>Deterministic (0.1)</span>
+                    <span>Inventive (1.5)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-indigo-300 uppercase">Selected Engine Backbone</label>
+                  <select 
+                    value={aiSettings.modelName} 
+                    onChange={e => setAiSettings({ ...aiSettings, modelName: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-indigo-950 bg-[#060610] text-[#f1f1f6] text-xs outline-none focus:border-indigo-500"
+                  >
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Extreme Precision)</option>
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Blazing Fluid)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-indigo-300 uppercase">Safety & Truth Grounding</label>
+                  <div className="flex items-center gap-3 bg-[#060610] p-2 rounded-xl border border-indigo-950">
+                    <input 
+                      type="checkbox" 
+                      checked={aiSettings.groundingActive} 
+                      onChange={e => setAiSettings({ ...aiSettings, groundingActive: e.target.checked })}
+                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 bg-indigo-950 border-indigo-950" 
+                    />
+                    <span className="text-xs text-indigo-200 font-medium">Deep Research grounding</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Generated Articles List */}
+            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] border border-indigo-900/40 rounded-2xl overflow-hidden shadow-xl">
+              <div className="p-4 bg-[#0a0a20] border-b border-indigo-950/40 flex justify-between items-center">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">AI Content Portfolio</span>
+                <span className="text-[10px] font-mono text-purple-400 uppercase font-bold tracking-wider">{posts.filter(p => p.categoryId === 'ai').length} records synced</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <tbody className="divide-y divide-indigo-950/30">
+                    {posts.filter(p => p.categoryId === 'ai').map(post => (
+                      <tr key={post.id} className="hover:bg-purple-500/5 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                            <span className="text-sm text-white font-medium">{post.title}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-xs text-indigo-200/50 font-mono">{post.date}</td>
+                        <td className="p-4 text-right text-xs">
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {posts.filter(p => p.categoryId === 'ai').length === 0 && (
+                      <tr><td colSpan={3} className="p-12 text-center text-indigo-300/40 font-medium">No artificial intelligence articles currently. Launch the generator to populate!</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </motion.div>
         )}
       </div>
