@@ -13,6 +13,7 @@ import { ArticlePage } from './pages/ArticlePage';
 import { About } from './pages/About';
 import { Privacy } from './pages/Privacy';
 import { Terms } from './pages/Terms';
+import { Disclaimer } from './pages/Disclaimer';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -39,8 +40,9 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy-policy" element={<Privacy />} />
+              <Route path="/terms-of-service" element={<Terms />} />
+              <Route path="/disclaimer" element={<Disclaimer />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/:categoryId" element={<CategoryPage />} />
               <Route path="/article/:articleId" element={<ArticlePage />} />

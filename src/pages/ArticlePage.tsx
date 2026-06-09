@@ -7,7 +7,7 @@ import { ArticleCard } from '../components/ArticleCard';
 import { ShareButtons } from '../components/ShareButtons';
 import { motion, useScroll, useSpring } from 'motion/react';
 import React, { useState, useEffect } from 'react';
-import { subscribeToComments, addPostComment, togglePostLike, getPostLikeStatus, CommentData } from '../lib/blogService';
+import { subscribeToComments, addPostComment, togglePostLike, getPostLikeStatus, CommentData, incrementPostViews } from '../lib/blogService';
 
 export function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>();
@@ -31,6 +31,8 @@ export function ArticlePage() {
   // 1. Hook up listeners for dynamic comments and like status
   useEffect(() => {
     if (!articleId) return;
+
+    incrementPostViews(articleId);
 
     const unsubscribeComments = subscribeToComments(
       articleId,
@@ -180,11 +182,23 @@ export function ArticlePage() {
 
       {/* Article Body */}
       <article className="max-w-2xl mx-auto px-4 sm:px-6 pb-12 prose prose-lg prose-indigo dark:prose-invert prose-headings:font-display prose-headings:tracking-tight text-gray-800 dark:text-gray-200 leading-relaxed">
-        {post.content.map((paragraph, idx) => (
-          <p key={idx} className={`${idx === 0 ? 'text-xl leading-relaxed text-gray-600 dark:text-gray-300 mb-8' : 'mb-6'}`}>
-            {paragraph}
-          </p>
-        ))}
+        {post.content.map((paragraph, idx) => {
+          const hasHTML = paragraph.trim().startsWith('<') || /<\/?[a-z][\s\S]*>/i.test(paragraph);
+          if (hasHTML) {
+            return (
+              <div 
+                key={idx} 
+                className="mb-6 space-y-4 prose-headings:font-display prose-headings:tracking-tight prose-a:text-indigo-600"
+                dangerouslySetInnerHTML={{ __html: paragraph }} 
+              />
+            );
+          }
+          return (
+            <p key={idx} className={`${idx === 0 ? 'text-xl leading-relaxed text-gray-600 dark:text-gray-300 mb-8' : 'mb-6'}`}>
+              {paragraph}
+            </p>
+          );
+        })}
       </article>
 
       {/* Share Buttons Component */}

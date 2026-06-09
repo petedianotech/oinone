@@ -101,14 +101,18 @@ export function subscribeToArticles(callback: (posts: Post[]) => void, onError: 
     if (snapshot.empty) {
       // Lazy seed on snapshot empty
       seedPostsIfEmpty().then((seeded) => {
-        callback(seeded);
+        const publishedPosts = seeded.filter(p => !p.isDraft);
+        callback(publishedPosts);
       }).catch((err) => {
         onError(err);
       });
     } else {
       const posts: Post[] = [];
       snapshot.forEach((doc) => {
-        posts.push(doc.data() as Post);
+        const postData = doc.data() as Post;
+        if (!postData.isDraft) {
+          posts.push(postData);
+        }
       });
       callback(posts);
     }
@@ -183,9 +187,36 @@ export async function addPostComment(postId: string, authorName: string, content
   try {
     const commentRef = doc(db, 'articles', postId, 'comments', commentId);
     await setDoc(commentRef, commentPayload);
+    
+    // Also increment commentsCount on the post
+    const postRef = doc(db, 'articles', postId);
+    await updateDoc(postRef, {
+      commentsCount: increment(1)
+    });
+
     return commentPayload;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+/**
+ * Increment views count for an article (unique to session or page load)
+ */
+export async function incrementPostViews(postId: string): Promise<void> {
+  const viewedKey = `viewed_${postId}`;
+  if (sessionStorage.getItem(viewedKey)) {
+    return; // Already viewed in this session
+  }
+  
+  try {
+    const postRef = doc(db, 'articles', postId);
+    await updateDoc(postRef, {
+      viewsCount: increment(1)
+    });
+    sessionStorage.setItem(viewedKey, 'true');
+  } catch (err) {
+    // silently fail
   }
 }
 

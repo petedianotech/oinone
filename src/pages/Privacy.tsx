@@ -13,7 +13,7 @@ export function Privacy() {
         
         <div className="prose prose-indigo dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 space-y-6 leading-relaxed">
           <p>
-            Welcome to Oinone ("we," "our," or "us"). We respect your privacy and are committed to protecting the personal data you share with us. This Privacy Policy describes how we collect, use, and safeguard your information when you visit our website (oinone.com) and read our specialized publications across technology, artificial intelligence, finance, and online monetization.
+            Welcome to Oinone ("we," "our," or "us"), created and developed by Peter Damiano. We respect your privacy and are committed to protecting the personal data you share with us. This Privacy Policy describes how we collect, use, and safeguard your information when you visit our website (oinone.com) and read our specialized publications across technology, artificial intelligence, finance, and online monetization.
           </p>
 
           <h2 className="font-display text-xl font-bold text-gray-950 dark:text-white mt-8 mb-2">1. Information We Collect</h2>

@@ -52,8 +52,9 @@ export function Footer() {
             &copy; {new Date().getFullYear()} Oinone Media. All rights reserved.
           </p>
           <div className="flex space-x-6">
-            <Link to="/privacy" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Privacy Policy</Link>
-            <Link to="/terms" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Terms of Service</Link>
+            <Link to="/privacy-policy" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Terms of Service</Link>
+            <Link to="/disclaimer" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Disclaimer</Link>
           </div>
         </div>
       </div>

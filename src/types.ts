@@ -19,6 +19,10 @@ export interface Post {
   imageUrl: string;
   featured?: boolean;
   trending?: boolean;
+  likesCount?: number;
+  viewsCount?: number;
+  commentsCount?: number;
+  isDraft?: boolean;
 }
 
 export interface Category {
