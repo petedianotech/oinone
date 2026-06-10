@@ -46,32 +46,6 @@ export function Home() {
   };
 
   const renderHomeContent = () => {
-    if (loading) {
-      return (
-        <div className="space-y-32">
-          {/* Skeleton Hero */}
-          <section className="h-[650px] relative rounded-[2.5rem] overflow-hidden bg-gray-100 dark:bg-[#121216] animate-pulse">
-             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-          </section>
-          <section className="space-y-8">
-             <div className="w-48 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 animate-pulse" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <ArticleSkeleton key={i} variant="standard" />
-              ))}
-            </div>
-          </section>
-        </div>
-      );
-    }
-
-    const featured = getFeaturedPosts();
-    const trending = getTrendingPosts();
-    const recent = posts.filter(p => !p.featured);
-    const filteredRecent = selectedCategory === 'all'
-      ? recent.slice(0, 6)
-      : posts.filter(p => p.categoryId === selectedCategory).slice(0, 6);
-
     const categories = [
       { id: 'all', name: 'All Insights', icon: Compass },
       { id: 'finance', name: 'Finance & Wealth', icon: Coins },
@@ -81,13 +55,19 @@ export function Home() {
       { id: 'cyber', name: 'Cybersecurity', icon: Shield }
     ];
 
-    const matchedPosts = searchQuery.trim() 
+    const matchedPosts = searchQuery.trim() && !loading
       ? posts.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.excerpt.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 4)
       : [];
 
+    const trending = !loading ? getTrendingPosts() : [];
+    const recent = !loading ? posts.filter(p => !p.featured) : [];
+    const filteredRecent = !loading ? (selectedCategory === 'all'
+      ? recent.slice(0, 6)
+      : posts.filter(p => p.categoryId === selectedCategory).slice(0, 6)) : [];
+
     return (
       <div className="space-y-32">
-        {/* PREMIUM AI HERO SECTION */}
+        {/* PREMIUM AI HERO SECTION (Loads immediately) */}
         <section className="relative min-h-[80vh] flex flex-col justify-center pt-10">
           {/* Background Ambient Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-purple/20 mix-blend-screen blur-[120px] rounded-full pointer-events-none dark:block hidden" />
@@ -191,63 +171,81 @@ export function Home() {
           </div>
         </section>
 
-        {/* FEATURED MAGAZINE EXPERIENCE */}
-        {featured.length > 0 && (
-          <section className="relative z-10">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Editor's Neural Selection</h2>
+        {/* Content Section - Skeleton or Real data */}
+        {loading ? (
+          <section className="space-y-32">
+            {/* Skeleton Hero Featured */}
+            <div className="h-[650px] relative rounded-[2.5rem] overflow-hidden bg-gray-100 dark:bg-[#121216] animate-pulse">
+               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[700px]">
-              {/* Massive Main Feature */}
-              {featured[0] && (
-                <Link to={`/article/${featured[0].id}`} className="lg:col-span-8 relative rounded-[2rem] overflow-hidden group block h-[500px] lg:h-full">
-                  <div className="absolute inset-0 bg-gray-200 dark:bg-[#121216]">
-                    <img src={featured[0].imageUrl} alt={featured[0].title} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" loading="eager" />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent" />
-                  
-                  <div className="absolute inset-0 p-8 md:p-12 pl-8 md:pl-12 flex flex-col justify-end">
-                    <div className="flex items-center gap-3 mb-6">
-                      <span className="px-3 py-1.5 rounded-full glass-panel text-xs font-bold text-white uppercase tracking-wider backdrop-blur-md">
-                        {categories.find(c => c.id === featured[0].categoryId)?.name || featured[0].categoryId}
-                      </span>
-                      <span className="text-white/80 text-sm font-medium flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" /> 8 min read
-                      </span>
-                    </div>
-                    <h3 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-4 group-hover:text-cyan-300 transition-colors">
-                      {featured[0].title}
-                    </h3>
-                    <p className="text-lg text-white/70 line-clamp-2 max-w-3xl font-medium">
-                      {featured[0].excerpt}
-                    </p>
-                    <div className="mt-8 flex items-center gap-4">
-                      <img src={featured[0].authorAvatar} className="w-12 h-12 rounded-full border-2 border-white/20" alt={featured[0].authorName} />
-                      <div>
-                        <div className="text-white font-bold">{featured[0].authorName}</div>
-                        <div className="text-white/60 text-sm">{featured[0].authorRole}</div>
+            <div className="space-y-8">
+               <div className="w-48 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 animate-pulse" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <ArticleSkeleton key={i} variant="standard" />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* FEATURED MAGAZINE EXPERIENCE */}
+            {getFeaturedPosts().length > 0 && (
+              <section className="relative z-10">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Editor's Neural Selection</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[700px]">
+                  {/* Massive Main Feature */}
+                  {getFeaturedPosts()[0] && (
+                    <Link to={`/article/${getFeaturedPosts()[0].id}`} className="lg:col-span-8 relative rounded-[2rem] overflow-hidden group block h-[500px] lg:h-full">
+                      <div className="absolute inset-0 bg-gray-200 dark:bg-[#121216]">
+                        <img src={getFeaturedPosts()[0].imageUrl} alt={getFeaturedPosts()[0].title} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" loading="eager" />
                       </div>
-                    </div>
-                  </div>
-                </Link>
-              )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent" />
+                      
+                      <div className="absolute inset-0 p-8 md:p-12 pl-8 md:pl-12 flex flex-col justify-end">
+                        <div className="flex items-center gap-3 mb-6">
+                          <span className="px-3 py-1.5 rounded-full glass-panel text-xs font-bold text-white uppercase tracking-wider backdrop-blur-md">
+                            {categories.find(c => c.id === getFeaturedPosts()[0].categoryId)?.name || getFeaturedPosts()[0].categoryId}
+                          </span>
+                          <span className="text-white/80 text-sm font-medium flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" /> 8 min read
+                          </span>
+                        </div>
+                        <h3 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-4 group-hover:text-cyan-300 transition-colors">
+                          {getFeaturedPosts()[0].title}
+                        </h3>
+                        <p className="text-lg text-white/70 line-clamp-2 max-w-3xl font-medium">
+                          {getFeaturedPosts()[0].excerpt}
+                        </p>
+                        <div className="mt-8 flex items-center gap-4">
+                          <img src={getFeaturedPosts()[0].authorAvatar} className="w-12 h-12 rounded-full border-2 border-white/20" alt={getFeaturedPosts()[0].authorName} />
+                          <div>
+                            <div className="text-white font-bold">{getFeaturedPosts()[0].authorName}</div>
+                            <div className="text-white/60 text-sm">{getFeaturedPosts()[0].authorRole}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
 
-              {/* Secondary Layered Cards */}
-              <div className="lg:col-span-4 flex flex-col gap-6 h-[500px] lg:h-full">
-                {featured.slice(1, 3).map((post, idx) => (
-                  <Link key={post.id} to={`/article/${post.id}`} className="flex-1 relative rounded-[2rem] overflow-hidden group block bg-[#121216]">
-                    <div className="absolute inset-0">
-                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-700 group-hover:scale-105" loading="lazy" />
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-900/95 via-gray-900/60 to-transparent" />
-                    
-                    <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                      <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider w-fit mb-4">
-                        {categories.find(c => c.id === post.categoryId)?.name || post.categoryId}
-                      </span>
-                      <h3 className="font-display text-xl font-bold text-white leading-snug mb-3 group-hover:text-brand-purple transition-colors">
-                        {post.title}
+                  {/* Secondary Layered Cards */}
+                  <div className="lg:col-span-4 flex flex-col gap-6 h-[500px] lg:h-full">
+                    {getFeaturedPosts().slice(1, 3).map((post, idx) => (
+                      <Link key={post.id} to={`/article/${post.id}`} className="flex-1 relative rounded-[2rem] overflow-hidden group block bg-[#121216]">
+                        <div className="absolute inset-0">
+                          <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-700 group-hover:scale-105" loading="lazy" />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/95 via-gray-900/60 to-transparent" />
+                        
+                        <div className="absolute inset-0 p-8 flex flex-col justify-end">
+                          <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider w-fit mb-4">
+                            {categories.find(c => c.id === post.categoryId)?.name || post.categoryId}
+                          </span>
+                          <h3 className="font-display text-xl font-bold text-white leading-snug mb-3 group-hover:text-brand-purple transition-colors">
+                            {post.title}
                       </h3>
                       <div className="flex items-center gap-2 text-sm text-white/60">
                         <span>{formatDistanceToNow(new Date(post.date))} ago</span>
@@ -369,6 +367,8 @@ export function Home() {
             </div>
           )}
         </section>
+      </>
+      )}
       </div>
     );
   };

@@ -33,8 +33,7 @@ async function generateContentWithRetry(params: {
   const modelsToTry = [
     primaryModel,
     "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
-    "gemini-flash-latest"
+    "gemini-3.1-flash-lite"
   ];
 
   // Keep unique models in the prioritized order
@@ -48,28 +47,54 @@ async function generateContentWithRetry(params: {
   let lastError: any = null;
 
   for (const currentModel of uniqueModels) {
-    // Retry up to 3 times for transient errors on the current model
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    // Retry up to 2 times for transient errors to avoid long timeouts
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      let currentParams: any = null;
       try {
-        console.log(`[Gemini SDK] Trying model "${currentModel}" (attempt ${attempt}/3)...`);
+        console.log(`[Gemini SDK] Trying model "${currentModel}" (attempt ${attempt}/2)...`);
         
-        const currentParams = { ...params, model: currentModel };
+        const { tools, config, ...restParams } = params;
+        const currentConfig = { ...config };
+        
+        // Place tools inside config for @google/genai compliance
+        if (tools && !currentConfig.tools) {
+          currentConfig.tools = tools;
+        }
 
         // Fallbacks may not support tools (like googleSearch / search grounding), so strip them if not using the primary
-        if (currentModel !== primaryModel && (currentParams.tools || currentParams.config?.tools)) {
+        if (currentModel !== primaryModel && currentConfig.tools) {
           console.log(`[Gemini SDK Fallback] Stripping tools on fallback model to maximize success.`);
-          delete currentParams.tools;
-          if (currentParams.config) {
-            const { tools, toolConfig, ...restConfig } = currentParams.config;
-            currentParams.config = restConfig;
-          }
+          delete currentConfig.tools;
+          delete currentConfig.toolConfig;
         }
+
+        currentParams = {
+          ...restParams,
+          model: currentModel,
+          config: currentConfig
+        };
 
         return await ai.models.generateContent(currentParams);
       } catch (error: any) {
         lastError = error;
         const errMsg = error.message || String(error);
         console.warn(`[Gemini SDK Error] Model "${currentModel}" failed:`, errMsg);
+
+        // If the previous request had tools and failed, immediately try WITHOUT tools on the same model
+        if (currentParams && currentParams.config?.tools) {
+          console.log(`[Gemini SDK Fallback] Request with tools failed. Retrying same model "${currentModel}" WITHOUT tools ...`);
+          const paramsWithoutTools = { ...currentParams };
+          const cleanConfig = { ...paramsWithoutTools.config };
+          delete cleanConfig.tools;
+          delete cleanConfig.toolConfig;
+          paramsWithoutTools.config = cleanConfig;
+          try {
+            return await ai.models.generateContent(paramsWithoutTools);
+          } catch (noToolsError: any) {
+            console.warn(`[Gemini SDK Error] Retrying same model "${currentModel}" WITHOUT tools also failed:`, noToolsError.message || noToolsError);
+            lastError = noToolsError;
+          }
+        }
 
         // Call is transient if 503, 429, UNAVAILABLE, RESOURCE_EXHAUSTED or high demand
         const isTransient = errMsg.includes("503") || 
@@ -78,8 +103,8 @@ async function generateContentWithRetry(params: {
                             errMsg.includes("RESOURCE_EXHAUSTED") ||
                             /high demand/i.test(errMsg);
 
-        if (isTransient && attempt < 3) {
-          const delayMs = attempt * 1500;
+        if (isTransient && attempt < 2) {
+          const delayMs = attempt * 1000;
           console.log(`[Gemini SDK Retry] Transient error. Retrying in ${delayMs}ms...`);
           await new Promise(resolve => setTimeout(resolve, delayMs));
         } else {
@@ -98,22 +123,34 @@ const STOCK_GALLERY: Record<string, string[]> = {
   ai: [
     "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200", 
     "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200"
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1535378917042-10a22c95931a?auto=format&fit=crop&q=80&w=1200"
   ],
-  crypto: [
-    "https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1516245834210-c4c142787335?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?auto=format&fit=crop&q=80&w=1200"
-  ],
-  startups: [
+  technology: [
     "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=1200"
+    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=1200"
   ],
-  markets: [
+  finance: [
     "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&q=80&w=1200",
     "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=1200",
-    "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&q=80&w=1200"
+    "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?auto=format&fit=crop&q=80&w=1200"
+  ],
+  mmo: [
+    "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1516245834210-c4c142787335?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1621416894569-0f39ed31d247?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1542744094-3a31f103e35f?auto=format&fit=crop&q=80&w=1200"
   ],
   default: [
     "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=1200",
@@ -199,27 +236,31 @@ SUMMARY: [your simple English summary]`;
     }
 
     // Clean up content from the IMAGE_PROMPT and SUMMARY lines
-    const cleanContent = fullContent
+    let cleanContent = fullContent
       .replace(/IMAGE_PROMPT:\s*(.*)/g, '')
       .replace(/SUMMARY:\s*([\s\S]*)/, '')
       .trim();
+
+    // Strip any markdown HTML code block wrapper if present
+    if (cleanContent.startsWith("```")) {
+      cleanContent = cleanContent.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "").trim();
+    }
 
     // Step 3: Image Acquisition Phase
     let generatedImages: string[] = [];
     
     if (imageType === 'stock') {
-      // AI search for stock images (dynamically build keyword-tagged, stunning Unsplash endpoints)
-      const searchTerms = encodeURIComponent(keyword + " " + topic);
-      const categoryTerms = encodeURIComponent(catId);
-      
-      const unsplash1 = `https://images.unsplash.com/featured/1200x675/?sig=1&${searchTerms}`;
-      const unsplash2 = `https://images.unsplash.com/featured/1200x675/?sig=2&${categoryTerms}`;
-      
-      // Select a backup from our local elite gallery
+      // Return 3 unique high-quality pre-verified images from our premium category stock gallery
       const gallery = STOCK_GALLERY[catId] || STOCK_GALLERY.default;
-      const backupImg = gallery[Math.floor(Math.random() * gallery.length)];
-      
-      generatedImages = [unsplash1, unsplash2, backupImg];
+      const shuffled = [...gallery].sort(() => 0.5 - Math.random());
+      generatedImages = shuffled.slice(0, 3);
+      // Ensure we have exactly 3 images
+      while (generatedImages.length < 3) {
+        const fallback = STOCK_GALLERY.default[Math.floor(Math.random() * STOCK_GALLERY.default.length)];
+        if (!generatedImages.includes(fallback)) {
+          generatedImages.push(fallback);
+        }
+      }
     } else {
       // imageType === 'ai': generate images in parallel to solve slow response times
       const promptsToRun = imagePrompts.slice(0, 3);
@@ -252,9 +293,16 @@ SUMMARY: [your simple English summary]`;
       const results = await Promise.all(imagePromises);
       generatedImages = results.filter((img): img is string => img !== null);
 
-      if (generatedImages.length === 0) {
+      // Complement with high-quality stock photography if some AI images failed to generate
+      if (generatedImages.length < 3) {
         const gallery = STOCK_GALLERY[catId] || STOCK_GALLERY.default;
-        generatedImages = [gallery[0]];
+        const shuffled = [...gallery].sort(() => 0.5 - Math.random());
+        for (const img of shuffled) {
+          if (generatedImages.length >= 3) break;
+          if (!generatedImages.includes(img)) {
+            generatedImages.push(img);
+          }
+        }
       }
     }
 

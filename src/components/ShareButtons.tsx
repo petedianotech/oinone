@@ -82,50 +82,56 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 transition-all">
-      <div className="flex items-center gap-2 text-gray-800 dark:text-gray-100">
-        <Share2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-        <span className="font-display font-medium text-sm">Share this insights article</span>
+    <div className="flex flex-col gap-5 p-6 glass-panel rounded-3xl border border-white/10 transition-all relative overflow-hidden bg-[#121216]/50">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-brand-cyan/5 blur-2xl pointer-events-none" />
+      
+      <div className="flex items-center gap-2.5 text-white/95 relative z-10">
+        <Share2 className="h-4 w-4 text-brand-cyan" />
+        <span className="font-display font-bold text-xs uppercase tracking-widest">Share Insights Feed</span>
       </div>
       
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5 relative z-10">
         {platforms.map((platform) => (
           <a
             key={platform.name}
             href={platform.shareUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="no-underline"
+            className="no-underline group"
           >
             <motion.div
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
-              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs cursor-pointer transition-all ${platform.color}`}
+              className={`flex items-center justify-center gap-2.5 py-3 px-3.5 rounded-2xl font-bold text-xs cursor-pointer transition-all border border-white/5 hover:border-white/25 shadow-lg ${platform.color}`}
             >
-              {platform.icon}
-              {platform.name !== 'X' && <span>{platform.name}</span>}
+              <span className="drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110 duration-200">
+                {platform.icon}
+              </span>
+              <span className="font-sans font-bold tracking-wide uppercase text-[10px] sm:text-xs">
+                {platform.name}
+              </span>
             </motion.div>
           </a>
         ))}
       </div>
 
-      <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[70%]">
+      <div className="border-t border-white/5 pt-4 flex flex-col sm:flex-row gap-3 items-center justify-between relative z-10">
+        <span className="text-[11px] font-mono text-gray-500 truncate max-w-full sm:max-w-[65%] bg-black/30 px-3 py-1.5 rounded-lg border border-white/5">
           {url}
         </span>
         <motion.button
           onClick={handleCopyLink}
-          className="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold cursor-pointer py-1 px-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg transition-colors border border-transparent hover:border-indigo-200"
+          className="w-full sm:w-auto flex items-center justify-center gap-2 text-xs text-brand-cyan hover:text-white font-bold uppercase tracking-wider cursor-pointer py-2 px-5 bg-brand-cyan/10 hover:bg-brand-cyan/20 rounded-xl transition-all border border-brand-cyan/20 hover:border-brand-cyan/40"
           whileTap={{ scale: 0.95 }}
         >
           {copied ? (
             <>
-              <Check className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-emerald-600">Copied!</span>
+              <Check className="h-4 w-4 text-emerald-400" />
+              <span className="text-emerald-400">Copied!</span>
             </>
           ) : (
             <>
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-4 w-4" />
               <span>Copy link</span>
             </>
           )}

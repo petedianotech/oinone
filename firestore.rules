@@ -46,6 +46,8 @@ service cloud.firestore {
              data.likesCount is int && data.likesCount >= 0 &&
              (!data.keys().hasAny(['viewsCount']) || (data.viewsCount is int && data.viewsCount >= 0)) &&
              (!data.keys().hasAny(['commentsCount']) || (data.commentsCount is int && data.commentsCount >= 0)) &&
+             (!data.keys().hasAny(['images']) || (data.images is list)) &&
+             (!data.keys().hasAny(['summary']) || (data.summary is string && data.summary.size() <= 2000)) &&
              (!data.keys().hasAny(['isDraft']) || data.isDraft is bool);
     }
 

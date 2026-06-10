@@ -232,17 +232,88 @@ export function ArticlePage() {
         {/* Main Article Content */}
         <article className="lg:col-span-7 w-full sm:-mt-10 relative z-20">
           <div className="prose prose-invert prose-lg prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
-            {post.content.map((paragraph, idx) => {
-              const hasHTML = paragraph.trim().startsWith('<') || /<\/?[a-z][\s\S]*>/i.test(paragraph);
-              if (hasHTML) {
-                return <div key={idx} className="mb-8" dangerouslySetInnerHTML={{ __html: paragraph }} />;
+            {(() => {
+              const renderedElements: React.ReactNode[] = [];
+              const totalItems = post.content.length;
+              
+              // Filter out the main cover image from secondary body images to prevent repetition
+              const bodyImages = (post.images || []).filter(img => img !== post.imageUrl);
+              
+              post.content.forEach((paragraph, idx) => {
+                const hasHTML = paragraph.trim().startsWith('<') || /<\/?[a-z][\s\S]*>/i.test(paragraph);
+                let elementObj: React.ReactNode;
+                
+                if (hasHTML) {
+                  elementObj = <div key={`p-${idx}`} className="mb-8 animate-fade-in" dangerouslySetInnerHTML={{ __html: paragraph }} />;
+                } else if (idx === 0) {
+                  elementObj = <p key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10">{paragraph}</p>;
+                } else {
+                  elementObj = <p key={`p-${idx}`} className="mb-8">{paragraph}</p>;
+                }
+                
+                renderedElements.push(elementObj);
+
+                // Insert the first secondary image after ~1/3 of the elements
+                if (bodyImages.length > 0 && idx === Math.floor(totalItems / 3)) {
+                  renderedElements.push(
+                    <div key="body-img-1" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
+                      <img 
+                        src={bodyImages[0]} 
+                        alt="Article insight illustration" 
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                    </div>
+                  );
+                }
+
+                // Insert the second secondary image after ~2/3 of the elements
+                if (bodyImages.length > 1 && idx === Math.floor((2 * totalItems) / 3) && Math.floor((2 * totalItems) / 3) !== Math.floor(totalItems / 3)) {
+                  renderedElements.push(
+                    <div key="body-img-2" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
+                      <img 
+                        src={bodyImages[1]} 
+                        alt="Deep dive analysis graphic" 
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                    </div>
+                  );
+                }
+              });
+
+              // Fallbacks: if total paragraphs are extremely small, append body images at the end
+              const minIndexForFirst = Math.floor(totalItems / 3);
+              const minIndexForSecond = Math.floor((2 * totalItems) / 3);
+              
+              if (bodyImages.length > 0 && minIndexForFirst >= totalItems) {
+                renderedElements.push(
+                  <div key="body-img-1-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
+                    <img src={bodyImages[0]} alt="Article insight illustration" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                );
               }
-              // Add a bit of smart styling to the first paragraph drop cap
-              if (idx === 0) {
-                return <p key={idx} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10">{paragraph}</p>;
+              if (bodyImages.length > 1 && minIndexForSecond >= totalItems) {
+                renderedElements.push(
+                  <div key="body-img-2-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
+                    <img src={bodyImages[1]} alt="Deep dive analysis graphic" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                );
               }
-              return <p key={idx} className="mb-8">{paragraph}</p>;
-            })}
+
+              return renderedElements;
+            })()}
+          </div>
+
+          {/* Share buttons segment for mobile & tablet readers (hidden on desktop to avoid repetition) */}
+          <div className="mt-12 pt-8 border-t border-white/10 lg:hidden">
+            <ShareButtons title={post.title} url={currentUrl} />
           </div>
 
           {/* Reactions Interactivity */}

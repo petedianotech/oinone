@@ -233,6 +233,7 @@ export function AdminDashboard() {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       readTime: Math.max(1, Math.ceil(generatedDraft.content.split(' ').length / 200)),
       imageUrl: generatedDraft.images?.[activeCoverIndex] || 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',
+      images: generatedDraft.images || [],
       featured: false,
       trending: false,
       likesCount: 0,

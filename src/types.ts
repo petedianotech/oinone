@@ -18,6 +18,7 @@ export interface Post {
   date: string;
   readTime: number;
   imageUrl: string;
+  images?: string[];
   featured?: boolean;
   trending?: boolean;
   likesCount?: number;
