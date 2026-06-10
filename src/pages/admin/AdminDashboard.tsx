@@ -85,7 +85,7 @@ export function AdminDashboard() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // New Post Form State
   const [newPost, setNewPost] = useState({
-    title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter', authorRole: 'Editor', authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', imageUrl: ''
+    title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: ''
   });
 
   useEffect(() => {
@@ -250,8 +250,8 @@ export function AdminDashboard() {
       author: {
         id: 'peter-admin',
         name: 'Peter Damiano',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-        role: 'Developer & Creator'
+        avatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg',
+        role: 'AI Editor & Product Architect'
       },
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       readTime: Math.max(1, Math.ceil(generatedDraft.content.split(' ').length / 200)),
@@ -303,7 +303,7 @@ export function AdminDashboard() {
   const closeCreateModal = () => {
     setShowCreateModal(false);
     setEditingPostId(null);
-    setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter', authorRole: 'Editor', authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', imageUrl: '' });
+    setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
   };
 
   const deletePost = async (id: string) => {
@@ -339,7 +339,7 @@ export function AdminDashboard() {
           setPosts(newPosts);
           setShowCreateModal(false);
           setEditingPostId(null);
-          setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter', authorRole: 'Editor', authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', imageUrl: '' });
+          setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
         } catch (err) {
           console.error(err);
           handleFirestoreError(err, OperationType.UPDATE, `articles/${editingPostId}`);
@@ -372,7 +372,7 @@ export function AdminDashboard() {
       await setDoc(doc(db, 'articles', id), fullPost);
       setPosts([fullPost, ...posts]);
       setShowCreateModal(false);
-      setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter', authorRole: 'Editor', authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80', imageUrl: '' });
+      setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
     } catch (err) {
       console.error('Error creating post', err);
       handleFirestoreError(err, OperationType.WRITE, `articles/${id}`);

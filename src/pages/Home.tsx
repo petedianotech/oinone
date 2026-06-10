@@ -232,239 +232,174 @@ export function Home() {
           </section>
         ) : (
           <>
-            {/* FEATURED MAGAZINE EXPERIENCE */}
-            {getFeaturedPosts().length > 0 && (
-              <section className="relative z-10">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Editor's Neural Selection</h2>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[700px]">
-                  {/* Massive Main Feature */}
-                  {getFeaturedPosts()[0] && (
-                    <Link to={`/article/${getFeaturedPosts()[0].id}`} className="lg:col-span-8 relative rounded-[2rem] overflow-hidden group block h-[500px] lg:h-full">
-                      <div className="absolute inset-0 bg-gray-200 dark:bg-[#121216]">
-                        <img src={getFeaturedPosts()[0].imageUrl} alt={getFeaturedPosts()[0].title} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" loading="eager" />
-                      </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/40 to-transparent" />
-                      
-                      <div className="absolute inset-0 p-8 md:p-12 pl-8 md:pl-12 flex flex-col justify-end">
-                        <div className="flex items-center gap-3 mb-6">
-                          <span className="px-3 py-1.5 rounded-full glass-panel text-xs font-bold text-white uppercase tracking-wider backdrop-blur-md">
-                            {categories.find(c => c.id === getFeaturedPosts()[0].categoryId)?.name || getFeaturedPosts()[0].categoryId}
-                          </span>
-                          <span className="text-white/80 text-sm font-medium flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" /> 8 min read
-                          </span>
-                        </div>
-                        <h3 className="font-display text-4xl md:text-5xl font-bold text-white leading-tight mb-4 group-hover:text-cyan-300 transition-colors">
-                          {getFeaturedPosts()[0].title}
-                        </h3>
-                        <p className="text-lg text-white/70 line-clamp-2 max-w-3xl font-medium">
-                          {getFeaturedPosts()[0].excerpt}
-                        </p>
-                        <div className="mt-8 flex items-center gap-4">
-                          <img src={getFeaturedPosts()[0].authorAvatar} className="w-12 h-12 rounded-full border-2 border-white/20" alt={getFeaturedPosts()[0].authorName} />
-                          <div>
-                            <div className="text-white font-bold">{getFeaturedPosts()[0].authorName}</div>
-                            <div className="text-white/60 text-sm">{getFeaturedPosts()[0].authorRole}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  )}
-
-                  {/* Secondary Layered Cards */}
-                  <div className="lg:col-span-4 flex flex-col gap-6 h-[500px] lg:h-full">
-                    {getFeaturedPosts().slice(1, 3).map((post, idx) => (
-                      <Link key={post.id} to={`/article/${post.id}`} className="flex-1 relative rounded-[2rem] overflow-hidden group block bg-[#121216]">
-                        <div className="absolute inset-0">
-                          <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-all duration-700 group-hover:scale-105" loading="lazy" />
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/95 via-gray-900/60 to-transparent" />
-                        
-                        <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                          <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-bold text-white uppercase tracking-wider w-fit mb-4">
-                            {categories.find(c => c.id === post.categoryId)?.name || post.categoryId}
-                          </span>
-                          <h3 className="font-display text-xl font-bold text-white leading-snug mb-3 group-hover:text-brand-purple transition-colors">
-                            {post.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-white/60">
-                        <span>{formatDistanceToNow(new Date(post.date))} ago</span>
-                        <span>•</span>
-                        <span>{post.viewsCount || 0} views</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* AI CATEGORY DISCOVERY (Replacing boring row) */}
-        <section>
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Knowledge Nodes</h2>
-            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-800 to-transparent mx-8 hidden md:block" />
-          </div>
-          
-          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-            {categories.map(topic => {
-              const Icon = topic.icon;
-              const isActive = selectedCategory === topic.id;
-              const count = topic.id === 'all' ? posts.length : posts.filter(p => p.categoryId === topic.id).length;
-              
-              return (
-                <button 
-                  key={topic.id} 
-                  onClick={() => setSelectedCategory(topic.id)} 
-                  className={`relative flex flex-col items-center justify-center gap-4 p-6 rounded-3xl transition-all duration-300 group overflow-hidden ${
-                    isActive
-                      ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-xl'
-                      : 'bg-white dark:bg-[#121216] border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg'
-                  }`}
-                >
-                  {/* Subtle Background Icon for active state */}
-                  {isActive && <Icon className="absolute -right-4 -bottom-4 w-24 h-24 opacity-[0.03] dark:opacity-5 pointer-events-none" />}
-                  
-                  <div className={`p-4 rounded-2xl transition-colors ${isActive ? 'bg-white/10 dark:bg-black/5' : 'bg-gray-50 dark:bg-white/5 group-hover:bg-gray-100 dark:group-hover:bg-white/10'}`}>
-                    <Icon className={`w-6 h-6 ${isActive ? '' : 'dark:text-white text-gray-900'}`} />
-                  </div>
-                  <div className="text-center">
-                    <div className={`text-sm font-bold ${isActive ? '' : 'text-gray-900 dark:text-white'}`}>{topic.name}</div>
-                    <div className={`text-[10px] uppercase tracking-widest mt-1 font-semibold ${isActive ? 'text-white/70 dark:text-gray-900/70' : 'text-gray-400'}`}>
-                      {count} {count === 1 ? 'Record' : 'Records'}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* EXCLUSIVE ACCESS (Offer Banner Redefined) */}
-        {featuredOffer && (
-          <section>
-            <div 
-              onClick={handleOfferClick}
-              className="relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-emerald-500/20 p-8 md:p-12 cursor-pointer group isolation-auto"
-            >
-              {/* Premium Glow effect behind banner */}
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-brand-blue/10 opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
-              
-              <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                {featuredOffer.imageUrl && (
-                  <div className="w-full md:w-64 h-40 rounded-[2rem] overflow-hidden shadow-2xl shrink-0">
-                    <img 
-                      src={featuredOffer.imageUrl} 
-                      alt={featuredOffer.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s] ease-out" 
-                      loading="lazy"
-                    />
-                  </div>
-                )}
-                <div className="flex-1 space-y-4 text-center md:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest">
-                    <Zap className="w-3.5 h-3.5" /> High-Value Partner Sequence
-                  </div>
-                  <h3 className="font-display text-3xl md:text-4xl font-bold text-white">
-                    {featuredOffer.title}
-                  </h3>
-                  <p className="text-gray-400 max-w-2xl text-lg font-medium">
-                    {featuredOffer.description}
+            {/* LATEST NEURAL LOGS (NOW PLACED AT THE VERY TOP) */}
+            <section className="space-y-8 animate-fade-in" id="articles-feed">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-250 dark:border-gray-800">
+                <div>
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    {selectedCategory === 'all' ? 'Latest Neural Logs' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Logs`}
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {loading ? 'Analyzing database...' : `Found ${totalMatchingCount} certified operational logs`}
                   </p>
                 </div>
-                <div className="shrink-0 w-full md:w-auto">
-                  <button className="w-full md:w-auto px-8 py-5 rounded-2xl bg-white text-black font-extrabold text-sm uppercase tracking-wider hover:bg-gray-100 transition-colors shadow-xl shadow-white/10 flex items-center justify-center gap-2">
-                    Initialize Sequence <ArrowRight className="w-4 h-4" />
-                  </button>
+
+                {/* Sorting Toolset */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-indigo-300/60 mr-2 flex items-center gap-1">
+                    <SlidersHorizontal className="w-3.5 h-3.5" /> Sort By:
+                  </span>
+                  
+                  <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/5 p-1 border border-gray-200/60 dark:border-white/5">
+                    {[
+                      { id: 'newest', name: 'Newest', icon: Calendar },
+                      { id: 'oldest', name: 'Oldest', icon: Calendar },
+                      { id: 'views', name: 'Popularity', icon: Eye },
+                      { id: 'likes', name: 'Highly Rated', icon: ThumbsUp }
+                    ].map((sortItem) => {
+                      const SortIcon = sortItem.icon;
+                      const isSortActive = sortBy === sortItem.id;
+                      return (
+                        <button
+                          key={sortItem.id}
+                          onClick={() => setSortBy(sortItem.id as any)}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            isSortActive
+                              ? 'bg-white dark:bg-white/10 text-indigo-600 dark:text-white shadow-sm border border-gray-200/50 dark:border-white/10'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
+                          }`}
+                        >
+                          <SortIcon className="w-3" />
+                          <span>{sortItem.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        )}
-
-        {/* LATEST NEURAL LOGS */}
-        <section className="space-y-8" id="articles-feed">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-250 dark:border-gray-800">
-            <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {selectedCategory === 'all' ? 'Latest Neural Logs' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Logs`}
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {loading ? 'Analyzing database...' : `Found ${totalMatchingCount} certified operational logs`}
-              </p>
-            </div>
-
-            {/* Sorting Toolset */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-indigo-300/60 mr-2 flex items-center gap-1">
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Sort By:
-              </span>
               
-              <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/5 p-1 border border-gray-200/60 dark:border-white/5">
-                {[
-                  { id: 'newest', name: 'Newest', icon: Calendar },
-                  { id: 'oldest', name: 'Oldest', icon: Calendar },
-                  { id: 'views', name: 'Popularity', icon: Eye },
-                  { id: 'likes', name: 'Highly Rated', icon: ThumbsUp }
-                ].map((sortItem) => {
-                  const SortIcon = sortItem.icon;
-                  const isSortActive = sortBy === sortItem.id;
+              {paginatedPosts.length > 0 ? (
+                <div className="space-y-12">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {paginatedPosts.map(post => (
+                      <ArticleCard key={post.id} post={post} variant="standard" />
+                    ))}
+                  </div>
+
+                  {/* Load More Button */}
+                  {totalMatchingCount > visibleCount && (
+                    <div className="flex justify-center pt-4">
+                      <button
+                        onClick={() => setVisibleCount(prev => prev + 6)}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 select-none text-gray-900 dark:text-white font-bold text-xs uppercase tracking-wider transition-all focus:ring-2 focus:ring-brand-purple/50 active:scale-95 cursor-pointer"
+                      >
+                        <span>Load More Insights</span>
+                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="col-span-full border border-dashed border-gray-200 dark:border-gray-800 rounded-3xl p-20 flex flex-col items-center justify-center text-center">
+                  <Sparkles className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-6" />
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Records Found</h3>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-sm">
+                    The neural database has no published entries for this specific category node.
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {/* EXCLUSIVE ACCESS (Offer Banner Redefined) */}
+            {featuredOffer && (
+              <section className="animate-fade-in">
+                <div 
+                  onClick={handleOfferClick}
+                  className="relative rounded-[2.5rem] overflow-hidden bg-[#0a0a0c] border border-emerald-500/20 p-8 md:p-12 cursor-pointer group isolation-auto"
+                >
+                  {/* Premium Glow effect behind banner */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-brand-blue/10 opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                  
+                  <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
+                    {featuredOffer.imageUrl && (
+                      <div className="w-full md:w-64 h-40 rounded-[2rem] overflow-hidden shadow-2xl shrink-0">
+                        <img 
+                          src={featuredOffer.imageUrl} 
+                          alt={featuredOffer.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s] ease-out" 
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 space-y-4 text-center md:text-left">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest">
+                        <Zap className="w-3.5 h-3.5" /> High-Value Partner Sequence
+                      </div>
+                      <h3 className="font-display text-3xl md:text-4xl font-bold text-white">
+                        {featuredOffer.title}
+                      </h3>
+                      <p className="text-gray-400 max-w-2xl text-lg font-medium">
+                        {featuredOffer.description}
+                      </p>
+                    </div>
+                    <div className="shrink-0 w-full md:w-auto">
+                      <button className="w-full md:w-auto px-8 py-5 rounded-2xl bg-white text-black font-extrabold text-sm uppercase tracking-wider hover:bg-gray-100 transition-colors shadow-xl shadow-white/10 flex items-center justify-center gap-2">
+                        Initialize Sequence <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* AI CATEGORY DISCOVERY (Replacing boring row) - MOVED TO THE BOTTOM */}
+            <section className="animate-fade-in">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Knowledge Nodes</h2>
+                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-800 to-transparent mx-8 hidden md:block" />
+              </div>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                {categories.map(topic => {
+                  const Icon = topic.icon;
+                  const isActive = selectedCategory === topic.id;
+                  const count = topic.id === 'all' ? posts.length : posts.filter(p => p.categoryId === topic.id).length;
+                  
                   return (
-                    <button
-                      key={sortItem.id}
-                      onClick={() => setSortBy(sortItem.id as any)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        isSortActive
-                          ? 'bg-white dark:bg-white/10 text-indigo-600 dark:text-white shadow-sm border border-gray-200/50 dark:border-white/10'
-                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
+                    <button 
+                      key={topic.id} 
+                      onClick={() => {
+                        setSelectedCategory(topic.id);
+                        const element = document.getElementById('articles-feed');
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }} 
+                      className={`relative flex flex-col items-center justify-center gap-4 p-6 rounded-3xl transition-all duration-300 group overflow-hidden cursor-pointer ${
+                        isActive
+                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-xl'
+                          : 'bg-white dark:bg-[#121216] border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg'
                       }`}
                     >
-                      <SortIcon className="w-3" />
-                      <span>{sortItem.name}</span>
+                      {/* Subtle Background Icon for active state */}
+                      {isActive && <Icon className="absolute -right-4 -bottom-4 w-24 h-24 opacity-[0.03] dark:opacity-5 pointer-events-none" />}
+                      
+                      <div className={`p-4 rounded-2xl transition-colors ${isActive ? 'bg-white/10 dark:bg-black/5' : 'bg-gray-50 dark:bg-white/5 group-hover:bg-gray-100 dark:group-hover:bg-white/10'}`}>
+                        <Icon className={`w-6 h-6 ${isActive ? '' : 'dark:text-white text-gray-900'}`} />
+                      </div>
+                      <div className="text-center">
+                        <div className={`text-sm font-bold ${isActive ? '' : 'text-gray-900 dark:text-white'}`}>{topic.name}</div>
+                        <div className={`text-[10px] uppercase tracking-widest mt-1 font-semibold ${isActive ? 'text-white/70 dark:text-gray-900/70' : 'text-gray-400'}`}>
+                          {count} {count === 1 ? 'Record' : 'Records'}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          </div>
-          
-          {paginatedPosts.length > 0 ? (
-            <div className="space-y-12">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {paginatedPosts.map(post => (
-                  <ArticleCard key={post.id} post={post} variant="standard" />
-                ))}
-              </div>
-
-              {/* Load More Button */}
-              {totalMatchingCount > visibleCount && (
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={() => setVisibleCount(prev => prev + 6)}
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 select-none text-gray-900 dark:text-white font-bold text-xs uppercase tracking-wider transition-all focus:ring-2 focus:ring-brand-purple/50 active:scale-95 cursor-pointer"
-                  >
-                    <span>Load More Insights</span>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="col-span-full border border-dashed border-gray-200 dark:border-gray-800 rounded-3xl p-20 flex flex-col items-center justify-center text-center">
-              <Sparkles className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-6" />
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Records Found</h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-                The neural database has no published entries for this specific category node.
-              </p>
-            </div>
-          )}
-        </section>
-      </>
-      )}
+            </section>
+          </>
+        )}
       </div>
     );
   };
