@@ -1,4 +1,6 @@
 import { motion } from 'motion/react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 
 export function Terms() {
   return (
@@ -8,6 +10,17 @@ export function Terms() {
       className="min-h-screen pt-24 bg-gray-50 dark:bg-gray-950 transition-colors"
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Back navigation */}
+        <div className="mb-6 flex justify-start">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors uppercase tracking-widest"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Go Back Home</span>
+          </Link>
+        </div>
+
         <h1 className="font-display text-4xl font-bold text-gray-950 dark:text-white mb-4">Terms of Service</h1>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Last updated: June 9, 2026</p>
         

@@ -4,7 +4,7 @@ import { useBlog } from '../lib/BlogContext';
 import { subscribeToActiveOffers, incrementOfferViews, incrementOfferClicks } from '../lib/offerService';
 import { Offer } from '../types';
 import { ArticleCard, ArticleSkeleton } from '../components/ArticleCard';
-import { Flame, Coins, Cpu, Sparkles, ArrowRight, ExternalLink, Search, Clock, Compass, Zap, Shield } from 'lucide-react';
+import { Flame, Coins, Cpu, Sparkles, ArrowRight, ExternalLink, Search, Clock, Compass, Zap, Shield, SlidersHorizontal, Calendar, Eye, ThumbsUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -14,7 +14,13 @@ export function Home() {
   const [featuredOffer, setFeaturedOffer] = useState<Offer | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'views' | 'likes'>('newest');
+  const [visibleCount, setVisibleCount] = useState<number>(6);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [selectedCategory, searchQuery, sortBy]);
 
   useEffect(() => {
     const unsubscribe = subscribeToActiveOffers((offers) => {
@@ -60,10 +66,47 @@ export function Home() {
       : [];
 
     const trending = !loading ? getTrendingPosts() : [];
-    const recent = !loading ? posts.filter(p => !p.featured) : [];
-    const filteredRecent = !loading ? (selectedCategory === 'all'
-      ? recent.slice(0, 6)
-      : posts.filter(p => p.categoryId === selectedCategory).slice(0, 6)) : [];
+    
+    // Process displayPosts with flexible filtering, sorting and paging
+    let displayPosts = !loading ? [...posts] : [];
+
+    // Filter by selected category node
+    if (selectedCategory !== 'all') {
+      displayPosts = displayPosts.filter(p => p.categoryId === selectedCategory);
+    }
+
+    // Filter by Search Input query string
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      displayPosts = displayPosts.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.excerpt.toLowerCase().includes(q)
+      );
+    }
+
+    // Apply exact custom sorting
+    displayPosts.sort((a, b) => {
+      if (sortBy === 'newest') {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+      }
+      if (sortBy === 'oldest') {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeA - timeB;
+      }
+      if (sortBy === 'views') {
+        return (b.viewsCount || 0) - (a.viewsCount || 0);
+      }
+      if (sortBy === 'likes') {
+        return (b.likesCount || 0) - (a.likesCount || 0);
+      }
+      return 0;
+    });
+
+    const totalMatchingCount = displayPosts.length;
+    const paginatedPosts = displayPosts.slice(0, visibleCount);
 
     return (
       <div className="space-y-32">
@@ -344,18 +387,71 @@ export function Home() {
         )}
 
         {/* LATEST NEURAL LOGS */}
-        <section className="space-y-8">
-          <div className="flex items-center justify-between pb-6 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {selectedCategory === 'all' ? 'Latest Neural Logs' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Logs`}
-            </h2>
+        <section className="space-y-8" id="articles-feed">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-250 dark:border-gray-800">
+            <div>
+              <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {selectedCategory === 'all' ? 'Latest Neural Logs' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Logs`}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {loading ? 'Analyzing database...' : `Found ${totalMatchingCount} certified operational logs`}
+              </p>
+            </div>
+
+            {/* Sorting Toolset */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-indigo-300/60 mr-2 flex items-center gap-1">
+                <SlidersHorizontal className="w-3.5 h-3.5" /> Sort By:
+              </span>
+              
+              <div className="inline-flex rounded-xl bg-gray-100 dark:bg-white/5 p-1 border border-gray-200/60 dark:border-white/5">
+                {[
+                  { id: 'newest', name: 'Newest', icon: Calendar },
+                  { id: 'oldest', name: 'Oldest', icon: Calendar },
+                  { id: 'views', name: 'Popularity', icon: Eye },
+                  { id: 'likes', name: 'Highly Rated', icon: ThumbsUp }
+                ].map((sortItem) => {
+                  const SortIcon = sortItem.icon;
+                  const isSortActive = sortBy === sortItem.id;
+                  return (
+                    <button
+                      key={sortItem.id}
+                      onClick={() => setSortBy(sortItem.id as any)}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        isSortActive
+                          ? 'bg-white dark:bg-white/10 text-indigo-600 dark:text-white shadow-sm border border-gray-200/50 dark:border-white/10'
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white'
+                      }`}
+                    >
+                      <SortIcon className="w-3" />
+                      <span>{sortItem.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           
-          {filteredRecent.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredRecent.map(post => (
-                <ArticleCard key={post.id} post={post} variant="standard" />
-              ))}
+          {paginatedPosts.length > 0 ? (
+            <div className="space-y-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {paginatedPosts.map(post => (
+                  <ArticleCard key={post.id} post={post} variant="standard" />
+                ))}
+              </div>
+
+              {/* Load More Button */}
+              {totalMatchingCount > visibleCount && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 6)}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 select-none text-gray-900 dark:text-white font-bold text-xs uppercase tracking-wider transition-all focus:ring-2 focus:ring-brand-purple/50 active:scale-95 cursor-pointer"
+                  >
+                    <span>Load More Insights</span>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="col-span-full border border-dashed border-gray-200 dark:border-gray-800 rounded-3xl p-20 flex flex-col items-center justify-center text-center">

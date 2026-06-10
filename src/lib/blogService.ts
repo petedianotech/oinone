@@ -152,34 +152,30 @@ export function subscribeToArticles(callback: (posts: Post[]) => void, onError: 
       // Lazy seed on snapshot empty
       seedPostsIfEmpty().then((seeded) => {
         const publishedPosts = seeded ? seeded.filter(p => !p.isDraft) : [];
+        publishedPosts.sort((a, b) => {
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeB - timeA;
+        });
         callback(publishedPosts);
       }).catch((err) => {
         onError(err);
       });
     } else {
       const posts: Post[] = [];
-      let containsLegacy = false;
       snapshot.forEach((doc) => {
         const postData = doc.data() as Post;
-        if (postData.id !== 'gemini-xprize-hackathon') {
-          containsLegacy = true;
-        }
         if (!postData.isDraft) {
           posts.push(postData);
         }
       });
-      
-      if (containsLegacy) {
-        console.log('[Blog Service Sync]: Legacy articles detected. Wiping environment and seeding Gemini XPRIZE Hackathon Premium...');
-        purgeAndReseedArticles()
-          .then((seeded) => {
-            const temp = seeded ? seeded.filter(p => !p.isDraft) : [];
-            callback(temp);
-          })
-          .catch(err => onError(err));
-      } else {
-        callback(posts);
-      }
+      // Sort posts chronologically (newest first)
+      posts.sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+      });
+      callback(posts);
     }
   }, (error) => {
     onError(new Error(JSON.stringify({

@@ -34,7 +34,7 @@ export function Footer() {
               <li><Link to="/about" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">About Us</Link></li>
               <li><a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Creator Portfolio</a></li>
               <li><Link to="/admin" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Admin</Link></li>
-              <li><a href="mailto:petedianotech@gmail.com" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Contact</a></li>
+              <li><a href="mailto:peterleodamiano@gmail.com" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Contact</a></li>
             </ul>
           </div>
         </div>

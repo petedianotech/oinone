@@ -1,10 +1,10 @@
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn } from '../lib/utils';
 import { CategoryId } from '../types';
 import { ArticleCard } from '../components/ArticleCard';
 import { motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ArrowLeft } from 'lucide-react';
 
 export function CategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -43,6 +43,17 @@ export function CategoryPage() {
     >
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-24 relative z-10">
         
+        {/* Back navigation */}
+        <div className="pt-6 flex justify-start">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-indigo-400 transition-colors uppercase tracking-widest"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Go Back Home</span>
+          </Link>
+        </div>
+
         {/* Category Header */}
         <div className="py-20 border-b border-white/5 mb-16 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-brand-purple/5 to-brand-cyan/5 blur-3xl rounded-full" />

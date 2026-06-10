@@ -30,9 +30,8 @@ async function generateContentWithRetry(params: {
   }
 
   // Chain of fallback models to try if the previous one fails
+  // Force gemini-3.1-flash-lite to respect the user's free plan, avoiding other premium query limitations
   const modelsToTry = [
-    primaryModel,
-    "gemini-3.5-flash",
     "gemini-3.1-flash-lite"
   ];
 
@@ -170,39 +169,50 @@ app.post("/api/ai/generate-blog", async (req, res) => {
 
     const catId = categoryId || "ai";
 
-    // Step 1: Research Phase using search grounding
-    const researchPrompt = `Conduct comprehensive research on the topic: "${topic}". 
-Target Keyword: "${keyword}".
-Analyze real-world information, identify trending sub-topics, extract relevant SEO keywords, and suggest a solid structue for a blog post.
-Return the result primarily focusing on the target keywords and search intent (informational/transactional/navigational).`;
+    // Step 1: Research & Structuring Phase (no Google search as requested; utilizing custom SEO expert guidelines)
+    const researchPrompt = `As an elite SEO digital marketer and expert business analyst, perform a comprehensive, high-fidelity research and structural plan on the topic: "${topic}". 
+Primary Target Keyword: "${keyword}".
+
+Requirements:
+1. Emulate real-world up-to-date trends and deep professional domain knowledge (up to mid-2026).
+2. Outline a highly structured semantic SEO blueprint.
+3. Identify 5-7 secondary, high-value semantic latent keywords.
+4. Detail the user intent, target reader profile, and comprehensive outline.
+5. Create a blueprint that will make the subsequent article incredibly deep, original, engaging, and authoritative.`;
 
     const researchResponse = await generateContentWithRetry({
       model: "gemini-3.1-flash-lite",
-      contents: researchPrompt,
-      tools: [{ googleSearch: {} }] // Using Search Grounding Mode
+      contents: researchPrompt
     });
 
     const researchData = researchResponse.text;
 
     // Step 2: Content Writing Phase
-    const writePrompt = `Write a full SEO-optimized article on the topic: "${topic}".
+    const writePrompt = `As a world-class professional copywriter, tech-journalist, and SEO specialist, write an exceptional, authoritative, and deeply engaging full-length article on the topic: "${topic}".
 Target Keyword: "${keyword}".
 Tone: ${tone || 'Professional'}.
 Length: ${length || 'Medium (around 800-1000 words)'}.
 
-Use the following research data to ground the article and make it authoritative:
+Apply these advanced copywriting guidelines to write an exceptionally high-quality piece:
+- Emulate elite publications like Wired, Premium Tech Journals, or Harvard Business Review.
+- Incorporate highly up-to-date concepts, technologies, and trends (up to mid-2026) to make the content feel futuristic and highly accurate.
+- Integrate rich storytelling, real-world analogies, and deep technical or financial insight depending on the category.
+- Formulate a clear, captivating narrative structure: draft a powerful, hook-based intro, follow with actionable in-depth expert content, and close with a forward-looking conclusion of high visionary scale.
+- Ensure natural readability, elegant rhythm, and expert transitions — absolutely no generic AI-sounding filler or superficial overviews.
+
+Use the following detailed research blueprint to ground and structure the article perfectly:
 ---
 ${researchData}
 ---
 
-Format using HTML tags (excluding <html>, <head>, or <body>). 
-Focus on structured format:
-- Catchy SEO-optimized Title (wrap in <h1>)
-- Meta description (briefly written at the top in a blockquote or <p> tag, clearly labeled)
-- H2 / H3 sections
-- FAQ section
-- Do not use markdown backticks for HTML block. Just return pure HTML.
-- Provide a natural readability, avoid keyword stuffing, feel human-written, and optimized for Google ranking.
+Formatting Guidelines:
+- Format the content using clean, semantic HTML tags (do NOT wrap in <html>, <head>, or <body>). 
+- SEO Title: Wrap the captivating headline in a single <h1> tag.
+- Meta Description: Provide an engaging meta description written at the very top, formatted as a <p className="text-gray-500 italic mb-6"> or <blockquote>, clearly labeled.
+- Subheaders: Structure the body with clear, compelling <h2> and <h3> tags.
+- Detailed Sections: Write with high density of value, bullet points, and clean lists.
+- FAQ Section: Include a concise, high-value FAQ section towards the end of the article using <h2> and <h3>.
+- Do NOT use markdown code blocks or backticks (\`\`\`html) around the output. Return raw HTML directly.
 
 After the content, on a new line, provide exactly 1-3 suggested image prompts based on the article sections, formatted exactly like:
 IMAGE_PROMPT: [prompt 1]

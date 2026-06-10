@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
-import { Mail, Globe, Code2, Cpu, Rocket, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, Mail, Globe, Code2, Cpu, Rocket, ShieldCheck } from 'lucide-react';
 
 export function About() {
   const labProjects = [
@@ -17,7 +18,17 @@ export function About() {
       animate={{ opacity: 1 }}
       className="min-h-screen pt-24 bg-gray-50 dark:bg-gray-950 transition-colors duration-200"
     >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-12">
+        {/* Back navigation */}
+        <div className="flex justify-start">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors uppercase tracking-widest"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Go Back Home</span>
+          </Link>
+        </div>
         
         {/* Hero Profile Section */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
@@ -40,7 +51,7 @@ export function About() {
               <a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 rounded-full transition-colors">
                 <Globe className="h-5 w-5" />
               </a>
-              <a href="mailto:petedianotech@gmail.com" className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 rounded-full transition-colors">
+              <a href="mailto:peterleodamiano@gmail.com" className="p-2 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 rounded-full transition-colors">
                 <Mail className="h-5 w-5" />
               </a>
             </div>
