@@ -15,6 +15,7 @@ import { Privacy } from './pages/Privacy';
 import { Terms } from './pages/Terms';
 import { Disclaimer } from './pages/Disclaimer';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { OffersVault } from './pages/OffersVault';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
@@ -31,14 +32,19 @@ function ScrollToTop() {
 
 function AppContent() {
   const location = useLocation();
-  const isAdminPage = location.pathname === '/admin';
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-      <Navbar />
+    <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white">
+      {!isAdminPage && <Navbar />}
       <div className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/vault" element={<OffersVault />} />
           <Route path="/about" element={<About />} />
           <Route path="/privacy-policy" element={<Privacy />} />
           <Route path="/terms-of-service" element={<Terms />} />

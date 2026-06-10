@@ -1,9 +1,10 @@
 import { useParams, Navigate } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
-import { CATEGORIES } from '../lib/utils';
+import { CATEGORIES, cn } from '../lib/utils';
 import { CategoryId } from '../types';
 import { ArticleCard } from '../components/ArticleCard';
 import { motion } from 'motion/react';
+import { Sparkles } from 'lucide-react';
 
 export function CategoryPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -15,10 +16,14 @@ export function CategoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-950 transition-colors duration-200">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 rounded-full border-t-2 border-indigo-600 animate-spin"></div>
-          <p className="text-gray-500 dark:text-gray-400 font-medium text-sm animate-pulse">Syncing category insights...</p>
+      <div className="min-h-screen pt-24 bg-[#0a0a0c]">
+        <div className="max-w-7xl mx-auto px-4 h-[60vh] rounded-3xl bg-[#121216] animate-pulse">
+           <div className="flex items-center justify-center h-full">
+             <div className="flex flex-col items-center gap-4">
+                <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
+                <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Syncing Category Nodes...</p>
+             </div>
+           </div>
         </div>
       </div>
     );
@@ -34,33 +39,37 @@ export function CategoryPage() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="min-h-screen pt-24 bg-gray-50 dark:bg-gray-950 flex flex-col transition-colors duration-200"
+      className="min-h-screen pt-24 bg-[#0a0a0c] flex flex-col transition-colors duration-200"
     >
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-20">
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-24 relative z-10">
         
         {/* Category Header */}
-        <div className="py-12 border-b border-gray-200 dark:border-gray-800 mb-12">
-          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide mb-4 ${category.color}`}>
-            {category.name}
-          </span>
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-gray-950 dark:text-white mb-4 tracking-tight">
-            The Latest in {category.name}
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl">
-            {category.description}
-          </p>
+        <div className="py-20 border-b border-white/5 mb-16 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-purple/5 to-brand-cyan/5 blur-3xl rounded-full" />
+          <div className="relative z-10 text-center max-w-3xl mx-auto">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-brand-cyan backdrop-blur-md mb-6">
+              {category.name} Data Stream
+            </span>
+            <h1 className="font-display text-5xl md:text-7xl font-black text-white mb-6 tracking-tight leading-tight">
+              {category.name}
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed">
+              {category.description}
+            </p>
+          </div>
         </div>
 
         {/* Content */}
         {posts.length === 0 ? (
-          <div className="text-center py-20">
-            <h3 className="text-xl text-gray-500">No posts found in this category yet.</h3>
+          <div className="text-center py-32 glass-panel rounded-[2rem] border border-white/5">
+            <Sparkles className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-2xl font-display font-bold text-gray-400">No nodes found in this sector yet.</h3>
           </div>
         ) : (
           <div className="space-y-16">
             {/* Featured Post for Category */}
             {featured && (
-               <ArticleCard post={featured} variant="featured" className="h-[400px] md:h-[500px]" />
+               <ArticleCard post={featured} variant="featured" className="h-[450px] md:h-[550px]" />
             )}
 
             {/* Grid */}

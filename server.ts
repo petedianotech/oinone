@@ -16,36 +16,81 @@ const ai = new GoogleGenAI({
   httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
 });
 
-// Helper function to safely call Gemini with a fallback model if 3.5-flash is overloaded
+// Helper function to safely call Gemini with fallback plans if any model is overloaded or fails
 async function generateContentWithRetry(params: {
   model: string;
   contents: any;
   tools?: any;
   config?: any;
 }) {
-  try {
-    return await ai.models.generateContent(params);
-  } catch (error: any) {
-    console.warn(`[Gemini SDK Error] Primary model ${params.model} failed. Error:`, error.message || error);
-    if (params.model === "gemini-3.5-flash") {
-      console.log(`[Gemini SDK Fallback] Falling back to gemini-flash-latest...`);
+  // Normalize known typos/unsupported models
+  let primaryModel = params.model;
+  if (primaryModel === "gemini-3.5-flash-lite") {
+    primaryModel = "gemini-3.1-flash-lite";
+  }
+
+  // Chain of fallback models to try if the previous one fails
+  const modelsToTry = [
+    primaryModel,
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest"
+  ];
+
+  // Keep unique models in the prioritized order
+  const uniqueModels: string[] = [];
+  for (const m of modelsToTry) {
+    if (m && !uniqueModels.includes(m)) {
+      uniqueModels.push(m);
+    }
+  }
+
+  let lastError: any = null;
+
+  for (const currentModel of uniqueModels) {
+    // Retry up to 3 times for transient errors on the current model
+    for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        return await ai.models.generateContent({
-          ...params,
-          model: "gemini-flash-latest"
-        });
-      } catch (fbError: any) {
-        console.warn(`[Gemini SDK Fallback Error] Fallback with tools failed or unsupported. Retrying without tools...`);
-        // If it failed because of tools (e.g., search grounding) on older/fallback model, retry without tools
-        const { tools, ...paramsWithoutTools } = params;
-        return await ai.models.generateContent({
-          ...paramsWithoutTools,
-          model: "gemini-flash-latest"
-        });
+        console.log(`[Gemini SDK] Trying model "${currentModel}" (attempt ${attempt}/3)...`);
+        
+        const currentParams = { ...params, model: currentModel };
+
+        // Fallbacks may not support tools (like googleSearch / search grounding), so strip them if not using the primary
+        if (currentModel !== primaryModel && (currentParams.tools || currentParams.config?.tools)) {
+          console.log(`[Gemini SDK Fallback] Stripping tools on fallback model to maximize success.`);
+          delete currentParams.tools;
+          if (currentParams.config) {
+            const { tools, toolConfig, ...restConfig } = currentParams.config;
+            currentParams.config = restConfig;
+          }
+        }
+
+        return await ai.models.generateContent(currentParams);
+      } catch (error: any) {
+        lastError = error;
+        const errMsg = error.message || String(error);
+        console.warn(`[Gemini SDK Error] Model "${currentModel}" failed:`, errMsg);
+
+        // Call is transient if 503, 429, UNAVAILABLE, RESOURCE_EXHAUSTED or high demand
+        const isTransient = errMsg.includes("503") || 
+                            errMsg.includes("429") || 
+                            errMsg.includes("UNAVAILABLE") || 
+                            errMsg.includes("RESOURCE_EXHAUSTED") ||
+                            /high demand/i.test(errMsg);
+
+        if (isTransient && attempt < 3) {
+          const delayMs = attempt * 1500;
+          console.log(`[Gemini SDK Retry] Transient error. Retrying in ${delayMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        } else {
+          // Break the retry loop to fall back immediately to the next model
+          break;
+        }
       }
     }
-    throw error;
   }
+
+  throw lastError || new Error(`Failed to generate content with any available Gemini models.`);
 }
 
 // STOCK GALLERY with fine-curated premium stock photography matching categories
@@ -95,7 +140,7 @@ Analyze real-world information, identify trending sub-topics, extract relevant S
 Return the result primarily focusing on the target keywords and search intent (informational/transactional/navigational).`;
 
     const researchResponse = await generateContentWithRetry({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: researchPrompt,
       tools: [{ googleSearch: {} }] // Using Search Grounding Mode
     });
@@ -131,7 +176,7 @@ Additionally, provide a simple English summary (easy to understand) of the artic
 SUMMARY: [your simple English summary]`;
 
     const writeResponse = await generateContentWithRetry({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: writePrompt
     });
 

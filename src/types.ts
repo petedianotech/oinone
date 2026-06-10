@@ -26,7 +26,23 @@ export interface Post {
   isDraft?: boolean;
 }
 
+export interface Offer {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+  provider: string; // e.g., MyLead
+  payout: string;
+  badgeText: string;
+  clicksCount: number;
+  viewsCount: number;
+  status: 'active' | 'paused';
+  createdAt: number;
+}
+
 export interface Category {
+
   id: CategoryId;
   name: string;
   description: string;

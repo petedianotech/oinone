@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { db, auth, OperationType, handleFirestoreError } from '../../lib/firebase';
 import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code } from 'lucide-react';
-import { Post, CategoryId } from '../../types';
+import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code, Menu, ArrowRight } from 'lucide-react';
+import { Post, CategoryId, Offer } from '../../types';
+import { subscribeToOffers, createOffer, updateOffer, deleteOffer } from '../../lib/offerService';
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'comments' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Custom AI settings for systems tab
   const [aiSettings, setAiSettings] = useState({
@@ -20,7 +23,57 @@ export function AdminDashboard() {
   });
   
   const [posts, setPosts] = useState<Post[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerForm, setOfferForm] = useState<Partial<Offer>>({ status: 'active' });
+  const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
+
+  // Pending Tasks State
+  const [tasks, setTasks] = useState<{ id: string; text: string; completed: boolean; priority: 'High' | 'Medium' | 'Low' }[]>(() => {
+    const saved = localStorage.getItem('admin-hub-tasks');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    return [
+      { id: 't1', text: 'Synthesize blog post using Gemini 3.1 flash lite', completed: false, priority: 'High' },
+      { id: 't2', text: 'Configure custom stock/Imagen art for fintech article', completed: false, priority: 'Medium' },
+      { id: 't3', text: 'Audit CPA marketing and lead campaign conversions', completed: true, priority: 'High' },
+      { id: 't4', text: 'SEO audit tech article meta descriptions & headers', completed: false, priority: 'Low' },
+    ];
+  });
+
+  const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+
+  useEffect(() => {
+    localStorage.setItem('admin-hub-tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  const toggleTask = (id: string) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskText.trim()) return;
+    const item = {
+      id: Math.random().toString(36).substr(2, 9),
+      text: newTaskText.trim(),
+      completed: false,
+      priority: newTaskPriority,
+    };
+    setTasks(prev => [...prev, item]);
+    setNewTaskText('');
+  };
+
+  const handleDeleteTask = (id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  };
   
   // AI Writer State
   const [aiForm, setAiForm] = useState({ topic: '', keyword: '', categoryId: 'ai', tone: 'Professional', length: 'Medium (around 800-1000 words)', imageType: 'stock' });
@@ -35,19 +88,36 @@ export function AdminDashboard() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    let unsubscribeOffers: (() => void) | null = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       if (u && u.email !== 'petedianotech@gmail.com') {
         await signOut(auth);
         setUser(null);
+        if (unsubscribeOffers) {
+          unsubscribeOffers();
+          unsubscribeOffers = null;
+        }
       } else {
         setUser(u);
+        if (u && u.email === 'petedianotech@gmail.com') {
+          fetchAdminData();
+          if (!unsubscribeOffers) {
+            unsubscribeOffers = subscribeToOffers(setOffers, (err) => {
+              console.error('[AdminDashboard] Offers subscription failed:', err);
+            });
+          }
+        }
       }
       setLoading(false);
-      if (u && u.email === 'petedianotech@gmail.com') {
-        fetchAdminData();
-      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeOffers) {
+        unsubscribeOffers();
+      }
+    };
   }, []);
 
   const fetchAdminData = async () => {
@@ -58,6 +128,35 @@ export function AdminDashboard() {
     } catch (e) {
       console.error('Error fetching admin data (articles):', e);
       handleFirestoreError(e, OperationType.GET, 'articles');
+    }
+  };
+
+  const handleSaveOffer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingOfferId) {
+        await updateOffer(editingOfferId, offerForm as any);
+      } else {
+        await createOffer(offerForm as any);
+      }
+      setShowOfferModal(false);
+      setOfferForm({ status: 'active' });
+      setEditingOfferId(null);
+    } catch (e) {
+      console.error('Failed to save offer', e);
+      alert('Error saving offer. Check console.');
+    }
+  };
+
+  const handleEditOffer = (offer: Offer) => {
+    setOfferForm(offer);
+    setEditingOfferId(offer.id);
+    setShowOfferModal(true);
+  };
+
+  const handleRemoveOffer = async (id: string) => {
+    if (window.confirm('Delete this CPA offer?')) {
+      await deleteOffer(id);
     }
   };
 
@@ -321,152 +420,417 @@ export function AdminDashboard() {
   const chartData = processChartData();
 
   return (
-    <div className="min-h-screen bg-[#060610] text-[#f1f1f6] flex flex-col md:flex-row transition-colors selection:bg-indigo-500/30 relative">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#060610] text-gray-900 dark:text-[#f1f1f6] flex flex-col md:flex-row transition-colors selection:bg-indigo-500/30 relative">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.06),transparent_50%)] pointer-events-none" />
+      {/* Backdrop overlay for mobile screens */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden cursor-pointer"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Menu */}
-      <div className="w-full md:w-64 bg-gradient-to-b from-[#0a0a16] via-[#100f2e] to-[#0a0a16] border-r border-indigo-900/30 p-6 flex flex-col text-white shadow-xl relative overflow-hidden shrink-0">
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gradient-to-b dark:from-[#0a0a16] dark:via-[#100f2e] dark:to-[#0a0a16] border-r border-gray-200 dark:border-indigo-900/30 p-6 flex flex-col text-gray-900 dark:text-white shadow-2xl overflow-hidden shrink-0 transition-transform duration-300 ease-in-out md:static md:w-64 md:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <div className="absolute inset-x-0 top-0 h-64 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
-        <div className="flex items-center gap-3 mb-10 text-indigo-400 relative z-10">
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="font-display font-bold text-xl text-white">Admin Hub</span>
+        <div className="flex items-center justify-between mb-10 text-indigo-400 relative z-10">
+          <div className="flex items-center gap-3">
+            <LayoutDashboard className="w-6 h-6" />
+            <span className="font-display font-bold text-xl text-white">Admin Hub</span>
+          </div>
+          {/* Mobile close button */}
+          <button 
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="p-1.5 hover:bg-white/5 rounded-xl text-gray-400 hover:text-white md:hidden cursor-pointer"
+            title="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         
-        <nav className="flex-1 space-y-2 relative z-10">
-          <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+        <nav className="flex-1 space-y-2 relative z-10 overflow-y-auto pb-4">
+          <Link to="/" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white mb-4 border border-transparent dark:border-white/5">
+            <ArrowRight className="w-4 h-4 rotate-180" /> Back to Website
+          </Link>
+          <button onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'overview' ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-l-2 border-indigo-600 dark:border-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'}`}>
             <LayoutDashboard className="w-4 h-4" /> Overview
           </button>
-          <button onClick={() => setActiveTab('ai-writer')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('ai-writer'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ai-writer' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <MessageSquare className="w-4 h-4" /> AI Writer
           </button>
-          <button onClick={() => setActiveTab('posts')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('posts'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <FileText className="w-4 h-4" /> Articles
+          </button>
+          <button onClick={() => { setActiveTab('offers'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'offers' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            <Coins className="w-4 h-4" /> Offers Vault
           </button>
           
           <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-indigo-200/50 mb-2 px-2">
             Quick Panels
           </div>
-          <button onClick={() => setActiveTab('finance-sector')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'finance-sector' ? 'bg-indigo-500/20 text-emerald-300 border-l-2 border-emerald-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('finance-sector'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'finance-sector' ? 'bg-indigo-500/20 text-emerald-300 border-l-2 border-emerald-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-emerald-400" /> Finance Sector
           </button>
-          <button onClick={() => setActiveTab('technology-hub')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'technology-hub' ? 'bg-indigo-500/20 text-blue-300 border-l-2 border-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('technology-hub'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'technology-hub' ? 'bg-indigo-500/20 text-blue-300 border-l-2 border-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-blue-400" /> Technology Hub
           </button>
-          <button onClick={() => setActiveTab('ai-systems')} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'ai-systems' ? 'bg-indigo-500/20 text-purple-300 border-l-2 border-purple-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+          <button onClick={() => { setActiveTab('ai-systems'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'ai-systems' ? 'bg-indigo-500/20 text-purple-300 border-l-2 border-purple-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-purple-400" /> AI Systems
           </button>
-        </nav>
 
-        <button onClick={handleLogout} className="mt-auto flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 hover:text-rose-400 transition-colors cursor-pointer relative z-10">
+          <div className="mt-8 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
+            <h5 className="font-bold text-xs text-indigo-300 mb-2">Support the Platform</h5>
+            <div className="flex flex-col gap-2">
+              <a href="#" className="flex items-center justify-center gap-2 bg-[#0070ba] hover:bg-[#003087] transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-3 brightness-0 invert" />
+                Donate
+              </a>
+              <a href="#" className="flex items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-900 border border-white/10 transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
+                Paychangu
+              </a>
+            </div>
+          </div>
+        </nav>
+ 
+        <button onClick={handleLogout} className="mt-4 flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 hover:text-rose-400 transition-colors cursor-pointer relative z-10 shrink-0">
           <LogOut className="w-4 h-4" /> Sign Out
         </button>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-6 md:p-10 overflow-y-auto relative z-10 bg-[#060610]/50 backdrop-blur-3xl">
-        <div className="absolute inset-0 bg-[#060610] h-full pointer-events-none -z-10" />
+      <div className="flex-1 p-6 md:p-10 overflow-y-auto relative z-10 bg-gray-50/50 dark:bg-[#060610]/50 backdrop-blur-3xl">
+        <div className="absolute inset-0 bg-gray-50 dark:bg-[#060610] h-full pointer-events-none -z-10" />
         <div className="absolute inset-x-0 -top-40 h-80 bg-indigo-500/10 blur-3xl pointer-events-none rounded-full" />
         
-        <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-indigo-950/45">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" /> Live Administration
+        <header className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200 dark:border-indigo-950/45">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            {/* Mobile Sidebar Toggle Button at Left Top Corner */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-3 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/20 hover:border-indigo-300 dark:hover:border-indigo-400/30 text-indigo-600 dark:text-indigo-300 rounded-xl md:hidden transition-all duration-200 cursor-pointer shadow-lg shadow-indigo-500/5 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+              title="Open Navigation"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" /> Live Administration
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight capitalize">
+                {activeTab.replace('-', ' ')}
+              </h2>
             </div>
-            <h2 className="text-3xl font-display font-extrabold text-white tracking-tight capitalize">{activeTab}</h2>
-            <p className="text-indigo-200/60 mt-1 text-sm">Welcome back, Peter Damiano. Your creative engine is fully synchronized.</p>
           </div>
-          <div className="flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/25 px-4 py-2 rounded-xl text-xs font-semibold text-indigo-300 shadow-sm shadow-indigo-500/5">
-            <span>Secure Cloud Access</span>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <p className="text-gray-500 dark:text-indigo-200/50 text-xs font-medium hidden lg:block">Welcome back, Peter Damiano. Your creative engine is fully synchronized.</p>
+            <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/25 px-4 py-2 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm shadow-indigo-500/5">
+              <span>Secure Cloud Access</span>
+            </div>
           </div>
         </header>
 
         {activeTab === 'overview' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-2xl rounded-full" />
-                <div className="flex items-center gap-4">
-                  <div className="p-3.5 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20"><FileText className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-indigo-300/60 font-bold">Total Articles</p>
-                    <p className="text-3xl font-display font-extrabold text-white mt-1">{posts.length}</p>
-                  </div>
-                </div>
-              </div>
+            {/* Redesigned Glass Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               
-              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 blur-2xl rounded-full" />
-                <div className="flex items-center gap-4">
-                  <div className="p-3.5 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20"><MessageSquare className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-purple-300/60 font-bold">Total Likes</p>
-                    <p className="text-3xl font-display font-extrabold text-white mt-1">{totalLikes}</p>
+              {/* TOTAL ARTICLES */}
+              <div className="relative bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl border border-white/10 dark:border-indigo-500/10 rounded-3xl p-6 overflow-hidden group hover:border-indigo-500/30 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 dark:bg-indigo-500/5 blur-2xl rounded-full" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-2xl border border-indigo-500/20">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
+                    Pipeline
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 dark:text-indigo-200/50 uppercase tracking-widest">Total Articles</p>
+                  <p className="text-3xl font-display font-extrabold text-gray-900 dark:text-white mt-1">{posts.length}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-400 dark:text-gray-500">
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      {posts.filter(p => !p.isDraft).length} Published
+                    </span>
+                    <span className="flex items-center gap-1 text-amber-400">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      {posts.filter(p => p.isDraft).length} Drafts
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300 sm:col-span-2 md:col-span-1">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-2xl rounded-full" />
-                <div className="flex items-center gap-4">
-                  <div className="p-3.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20"><Users className="w-6 h-6" /></div>
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-emerald-300/60 font-bold">Creator Profile</p>
-                    <p className="text-lg font-display font-bold text-white mt-2 truncate">Peter Damiano</p>
+              {/* ARTICLE ENGAGEMENT */}
+              <div className="relative bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl border border-white/10 dark:border-purple-500/10 rounded-3xl p-6 overflow-hidden group hover:border-purple-500/30 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 dark:bg-purple-500/5 blur-2xl rounded-full" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-2xl border border-purple-500/20">
+                    <TrendingUp className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                    Activity
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 dark:text-indigo-200/50 uppercase tracking-widest">Engagement Ratio</p>
+                  <p className="text-3xl font-display font-extrabold text-gray-900 dark:text-white mt-1">84.8%</p>
+                  <div className="flex items-center gap-1 mt-2 text-xs text-purple-400">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>{totalLikes} overall likes accrued</span>
                   </div>
                 </div>
               </div>
+
+              {/* AUDIENCE GROWTH */}
+              <div className="relative bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl border border-white/10 dark:border-cyan-500/10 rounded-3xl p-6 overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 dark:bg-cyan-500/5 blur-2xl rounded-full" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-cyan-500/10 text-cyan-400 rounded-2xl border border-cyan-500/20">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                    Scale
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 dark:text-indigo-200/50 uppercase tracking-widest">Audience Growth</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-display font-extrabold text-gray-900 dark:text-white mt-1">2,840</p>
+                    <span className="text-xs font-bold text-emerald-400 font-mono">+24.5%</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 truncate">Weekly readers subscribing to Oinone</p>
+                </div>
+              </div>
+
+              {/* PENDING TASKS COUNTER */}
+              <div className="relative bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl border border-white/10 dark:border-rose-500/10 rounded-3xl p-6 overflow-hidden group hover:border-rose-500/30 transition-all duration-300">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 dark:bg-rose-500/5 blur-2xl rounded-full" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl border border-rose-500/20">
+                    <Zap className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-rose-300 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                    Sprints
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 dark:text-indigo-200/50 uppercase tracking-widest">Pending Tasks</p>
+                  <p className="text-3xl font-display font-extrabold text-gray-900 dark:text-white mt-1">
+                    {tasks.filter(t => !t.completed).length} <span className="text-xs text-gray-500 dark:text-indigo-200/40 uppercase tracking-normal">remaining</span>
+                  </p>
+                  <div className="w-full bg-gray-200 dark:bg-white/10 h-1.5 rounded-full mt-3.5 overflow-hidden">
+                    <div 
+                      className="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${tasks.length > 0 ? (tasks.filter(t => t.completed).length / tasks.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-6 rounded-2xl border border-indigo-900/40 shadow-xl w-full h-[400px] relative overflow-hidden">
-              <div className="absolute inset-x-0 -top-32 h-64 bg-indigo-500/5 blur-3xl pointer-events-none rounded-full" />
-              <div className="flex items-center justify-between mb-6 z-10 relative">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Insight Operations</h3>
-                  <p className="text-xs text-indigo-200/50">Tracking reader sentiment & engagement metrics</p>
+            {/* Main Interactive Row (Analytics Chart + Pending Tasks Console) */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+              
+              {/* Chart Side (60% / 3 Columns wide) */}
+              <div className="lg:col-span-3 bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 dark:border-indigo-500/10 relative overflow-hidden flex flex-col min-h-[420px]">
+                <div className="absolute inset-x-0 -top-32 h-64 bg-indigo-500/5 blur-3xl pointer-events-none rounded-full" />
+                <div className="flex items-center justify-between mb-6 z-10 relative">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-505 bg-indigo-500 animate-pulse" />
+                      Insight Operations Terminal
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Tracking reader sentiment & engagement metrics</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs font-bold">
+                    <span className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500" /> Views
+                    </span>
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> Likes
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-xs font-semibold">
-                  <span className="flex items-center gap-1.5 text-indigo-400"><span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Views</span>
-                  <span className="flex items-center gap-1.5 text-emerald-400"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Likes</span>
+                
+                <div className="flex-1 w-full relative min-h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#22213a" vertical={false} opacity={0.15} />
+                      <XAxis dataKey="name" stroke="#68658d" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#68658d" fontSize={11} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(10, 10, 16, 0.95)', 
+                          borderColor: 'rgba(99, 102, 241, 0.2)', 
+                          borderRadius: '16px', 
+                          color: '#fff', 
+                          fontSize: '12px', 
+                          boxShadow: '0 8px 32px 0 rgba(0,0,0,0.5)',
+                          backdropFilter: 'blur(12px)'
+                        }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="views" 
+                        stroke="#6366f1" 
+                        strokeWidth={4} 
+                        dot={{ r: 5, stroke: '#6366f1', strokeWidth: 2, fill: '#060610' }} 
+                        activeDot={{ r: 7 }} 
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="likes" 
+                        stroke="#10b981" 
+                        strokeWidth={4} 
+                        dot={{ r: 5, stroke: '#10b981', strokeWidth: 2, fill: '#060610' }} 
+                        activeDot={{ r: 7 }} 
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height="75%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1b4b" opacity={0.3} />
-                  <XAxis dataKey="name" stroke="#657491" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#657491" fontSize={11} tickLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0c0b24', borderColor: '#2e2a75', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
-                    itemStyle={{ color: '#E2E8F0' }}
+
+              {/* Tasks Side (40% / 2 Columns wide) */}
+              <div className="lg:col-span-2 bg-white/5 dark:bg-[#12121e]/40 backdrop-blur-xl p-6 rounded-3xl border border-white/10 dark:border-rose-500/10 flex flex-col justify-between overflow-hidden">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Code className="w-4 h-4 text-rose-400" />
+                        Pending Editor Tasks
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-indigo-200/40 mt-0.5">Maintain publisher pipeline & content priorities</p>
+                    </div>
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                      {tasks.filter(t => !t.completed).length} Remainder
+                    </span>
+                  </div>
+
+                  {/* Task List */}
+                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                    {tasks.map(task => {
+                      const priorityColors = {
+                        High: 'bg-rose-500/10 text-rose-400 border-rose-500/25',
+                        Medium: 'bg-amber-500/10 text-amber-400 border-amber-500/25',
+                        Low: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25',
+                      };
+
+                      return (
+                        <div 
+                          key={task.id} 
+                          className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 group ${
+                            task.completed 
+                              ? 'bg-emerald-500/5 border-emerald-500/10 opacity-60' 
+                              : 'bg-white/5 dark:bg-white/[0.02] border-white/5 hover:border-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <button 
+                              onClick={() => toggleTask(task.id)}
+                              className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                                task.completed 
+                                  ? 'bg-emerald-500 border-emerald-400 text-white' 
+                                  : 'border-white/20 hover:border-emerald-500/50 bg-transparent'
+                              }`}
+                            >
+                              {task.completed && (
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                            <span className={`text-xs font-medium truncate ${task.completed ? 'line-through text-gray-500' : 'text-gray-950 dark:text-indigo-100'}`}>
+                              {task.text}
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full border ${priorityColors[task.priority]}`}>
+                              {task.priority}
+                            </span>
+                            <button 
+                              onClick={() => handleDeleteTask(task.id)}
+                              className="text-gray-400 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
+                              title="Delete Task"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {tasks.length === 0 && (
+                      <div className="text-center py-8 text-xs text-gray-400 dark:text-indigo-200/30">
+                        No pending editor sprints. You are fully cleared!
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add Task Form Footer */}
+                <form onSubmit={handleAddTask} className="mt-4 pt-4 border-t border-white/5 flex gap-2">
+                  <input 
+                    type="text" 
+                    required
+                    value={newTaskText}
+                    onChange={e => setNewTaskText(e.target.value)}
+                    placeholder="Quick sprint action item..." 
+                    className="flex-1 px-3 py-2 text-xs rounded-xl bg-white/5 border border-white/10 dark:border-indigo-950 text-gray-900 dark:text-white placeholder-gray-500 outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/20"
                   />
-                  <Line type="monotone" dataKey="views" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, stroke: '#6366f1', strokeWidth: 1 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="likes" stroke="#10b981" strokeWidth={3} dot={{ r: 4, stroke: '#10b981', strokeWidth: 1 }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
+                  <select 
+                    value={newTaskPriority}
+                    onChange={e => setNewTaskPriority(e.target.value as any)}
+                    className="px-2 py-2 text-xs rounded-xl bg-white/5 border border-white/10 dark:border-indigo-950 text-gray-900 dark:text-white outline-none focus:border-rose-500/50"
+                  >
+                    <option value="High" className="bg-[#0e0d28]">High</option>
+                    <option value="Medium" className="bg-[#0e0d28]">Med</option>
+                    <option value="Low" className="bg-[#0e0d28]">Low</option>
+                  </select>
+                  <button 
+                    type="submit" 
+                    className="p-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
+                    title="Add task"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </form>
+
+              </div>
+
             </div>
           </motion.div>
         )}
 
         {activeTab === 'ai-writer' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] p-8 rounded-2xl border border-indigo-900/40 shadow-xl max-w-4xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full" />
-              <h3 className="text-xl font-display font-bold mb-6 text-white flex items-center gap-2">
-                <span className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20"><MessageSquare className="w-5 h-5" /></span>
+            <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm max-w-4xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 dark:bg-indigo-500/5 blur-3xl rounded-full pointer-events-none" />
+              <h3 className="text-xl font-display font-bold mb-6 text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="p-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-500/20"><MessageSquare className="w-5 h-5" /></span>
                 AI Creative Studio
               </h3>
               {!generatedDraft ? (
                 <form onSubmit={handleGenerateAI} className="space-y-6 relative z-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Topic / Title Theme</label>
-                      <input type="text" required value={aiForm.topic} onChange={e => setAiForm({...aiForm, topic: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="e.g. Future of Generative AI" />
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Topic / Title Theme</label>
+                      <input type="text" required value={aiForm.topic} onChange={e => setAiForm({...aiForm, topic: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="e.g. Future of Generative AI" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Primary SEO Keyword</label>
-                      <input type="text" required value={aiForm.keyword} onChange={e => setAiForm({...aiForm, keyword: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="generative ai trends 2026" />
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Primary SEO Keyword</label>
+                      <input type="text" required value={aiForm.keyword} onChange={e => setAiForm({...aiForm, keyword: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" placeholder="generative ai trends 2026" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Channel Category</label>
-                      <select value={aiForm.categoryId} onChange={e => setAiForm({...aiForm, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Channel Category</label>
+                      <select value={aiForm.categoryId} onChange={e => setAiForm({...aiForm, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none">
                         <option value="finance">Finance</option>
                         <option value="technology">Technology</option>
                         <option value="mmo">Make Money</option>
@@ -474,41 +838,41 @@ export function AdminDashboard() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Editorial Tone</label>
-                      <input type="text" value={aiForm.tone} onChange={e => setAiForm({...aiForm, tone: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Editorial Tone</label>
+                      <input type="text" value={aiForm.tone} onChange={e => setAiForm({...aiForm, tone: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Target Article Length</label>
-                      <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Target Article Length</label>
+                      <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-3">Cover Art Selection Protocol</label>
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">Cover Art Selection Protocol</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'stock' ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-950 bg-[#060610]/40 hover:bg-white/5 text-gray-300'}`}>
-                          <input type="radio" name="imageType" value="stock" checked={aiForm.imageType === 'stock'} onChange={() => setAiForm({...aiForm, imageType: 'stock'})} className="text-indigo-600 focus:ring-indigo-500" />
+                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'stock' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/40 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400'}`}>
+                          <input type="radio" name="imageType" value="stock" checked={aiForm.imageType === 'stock'} onChange={() => setAiForm({...aiForm, imageType: 'stock'})} className="text-indigo-600 focus:ring-indigo-500 mix-blend-multiply dark:mix-blend-normal" />
                           <div>
-                            <span className="block font-semibold text-sm text-white">AI Search Stock Images</span>
-                            <span className="block text-xs text-indigo-200/50 mt-0.5">Blazing fast, real-time handpicked matching stock photos</span>
+                            <span className="block font-semibold text-sm text-gray-900 dark:text-white">AI Search Stock Images</span>
+                            <span className="block text-xs text-gray-500 mt-0.5">Blazing fast, real-time handpicked matching stock photos</span>
                           </div>
                         </label>
-                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'ai' ? 'border-indigo-500 bg-indigo-500/10' : 'border-indigo-950 bg-[#060610]/40 hover:bg-white/5 text-gray-300'}`}>
-                          <input type="radio" name="imageType" value="ai" checked={aiForm.imageType === 'ai'} onChange={() => setAiForm({...aiForm, imageType: 'ai'})} className="text-indigo-600 focus:ring-indigo-500" />
+                        <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'ai' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/40 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400'}`}>
+                          <input type="radio" name="imageType" value="ai" checked={aiForm.imageType === 'ai'} onChange={() => setAiForm({...aiForm, imageType: 'ai'})} className="text-indigo-600 focus:ring-indigo-500 mix-blend-multiply dark:mix-blend-normal" />
                           <div>
-                            <span className="block font-semibold text-sm text-white">Custom Imagen 4.0 Art</span>
-                            <span className="block text-xs text-indigo-200/50 mt-0.5">Unique generative AI designs tailored to topic</span>
+                            <span className="block font-semibold text-sm text-gray-900 dark:text-white">Custom Imagen 4.0 Art</span>
+                            <span className="block text-xs text-gray-500 mt-0.5">Unique generative AI designs tailored to topic</span>
                           </div>
                         </label>
                       </div>
                     </div>
                   </div>
-                  <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-indigo-950/45">
+                  <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-gray-800">
                     {isGenerating && (
-                      <div className="text-xs font-semibold text-indigo-400 animate-pulse flex items-center gap-2">
+                      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 animate-pulse flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></span>
                         Synthesizing premium editorial content drafts and executing search engine crawl grounding...
                       </div>
                     )}
-                    <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98] flex items-center gap-2 ml-auto cursor-pointer">
+                    <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center gap-2 ml-auto cursor-pointer">
                        {isGenerating ? (
                          <>
                            <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin"></div>
@@ -520,19 +884,19 @@ export function AdminDashboard() {
                 </form>
               ) : (
                 <div className="space-y-6 relative z-10">
-                  <div className="bg-[#060610]/80 p-5 rounded-2xl text-xs text-indigo-200/80 font-mono overflow-auto max-h-40 border border-indigo-900/30 leading-relaxed">
-                    <strong className="text-indigo-300 text-[10px] uppercase tracking-wider font-sans block mb-1.5">Deep Research Grounding Synopsis:</strong>
+                  <div className="bg-gray-50/80 dark:bg-[#060610]/80 p-5 rounded-2xl text-xs text-gray-700 dark:text-gray-300 font-mono overflow-auto max-h-40 border border-gray-200 dark:border-indigo-900/30 leading-relaxed shadow-inner">
+                    <strong className="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider font-sans block mb-1.5">Deep Research Grounding Synopsis:</strong>
                     {generatedDraft.researchSummary}
                   </div>
                   
                   <div className="space-y-6">
                     <div>
-                      <span className="text-[10px] uppercase tracking-widest bg-indigo-500/10 text-indigo-300 border border-indigo-400/20 px-2.5 py-1 rounded-full font-bold">Unreleased Draft</span>
-                      <h1 className="text-3xl font-display font-extrabold mb-4 text-white mt-3 tracking-tight">{generatedDraft.title}</h1>
+                      <span className="text-[10px] uppercase tracking-widest bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-400/20 px-2.5 py-1 rounded-full font-bold">Unreleased Draft</span>
+                      <h1 className="text-3xl font-display font-extrabold mb-4 text-gray-900 dark:text-white mt-3 tracking-tight">{generatedDraft.title}</h1>
                       
                       {generatedDraft.images && generatedDraft.images.length > 0 && (
                         <div className="mb-6 space-y-3">
-                          <label className="block text-xs font-bold text-indigo-300/60 uppercase tracking-wider">Select Primary Cover / Featured Artwork</label>
+                          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Select Primary Cover / Featured Artwork</label>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {generatedDraft.images.map((imgUrl: string, idx: number) => {
                               const isSelected = activeCoverIndex === idx;
@@ -541,15 +905,15 @@ export function AdminDashboard() {
                                   key={idx} 
                                   onClick={() => setActiveCoverIndex(idx)}
                                   className={`relative aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200 group ${
-                                    isSelected ? "border-indigo-500 scale-[1.02] shadow-xl shadow-indigo-500/20" : "border-indigo-950 opacity-60 hover:opacity-100 hover:border-indigo-800"
+                                    isSelected ? "border-indigo-500 scale-[1.02] shadow-xl shadow-indigo-500/20" : "border-transparent border-gray-200 dark:border-indigo-950 opacity-80 hover:opacity-100 hover:border-gray-300 dark:hover:border-indigo-800"
                                   }`}
                                 >
-                                  <img referrerPolicy="no-referrer" src={imgUrl} alt={`Cover option ${idx + 1}`} className="w-full h-full object-cover" />
+                                  <img referrerPolicy="no-referrer" loading="lazy" src={imgUrl} alt={`Cover option ${idx + 1}`} className="w-full h-full object-cover" />
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5">
                                     <span className="text-[10px] text-white font-semibold">Select Design Mockup {idx + 1}</span>
                                   </div>
                                   {isSelected && (
-                                    <div className="absolute top-2 left-2 bg-indigo-500 text-white rounded-lg p-1 text-[9px] uppercase font-bold tracking-wider px-2 shadow">Active Layout</div>
+                                    <div className="absolute top-2 left-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg p-1 text-[9px] uppercase font-bold tracking-wider px-2 shadow">Active Layout</div>
                                   )}
                                 </div>
                               );
@@ -559,17 +923,81 @@ export function AdminDashboard() {
                       )}
                       
                       <div className="mb-4">
-                        <label className="block text-xs font-bold text-indigo-300/60 uppercase tracking-wider mb-2">Editorial Prose Preview</label>
-                        <div className="prose dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-[#060610]/80 border-indigo-950 text-indigo-100/90 h-96 overflow-y-auto leading-relaxed" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Editorial Prose Preview</label>
+                        <div className="prose prose-slate dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm lg:pr-8" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 border-t border-indigo-950/40 pt-5">
-                     <button onClick={() => setGeneratedDraft(null)} className="px-5 py-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-xl transition-all cursor-pointer text-sm font-medium">Discard</button>
-                     <button onClick={() => saveAiDraft(false)} className="px-5 py-2.5 border border-indigo-550/30 text-indigo-300 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer text-sm font-medium">Save Offline Draft</button>
-                     <button onClick={() => saveAiDraft(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 cursor-pointer text-sm">Publish to Live Feed</button>
+                  <div className="flex justify-end gap-3 border-t border-gray-200 dark:border-gray-800 pt-5">
+                     <button onClick={() => setGeneratedDraft(null)} className="px-5 py-2.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-all cursor-pointer text-sm font-medium">Discard</button>
+                     <button onClick={() => saveAiDraft(false)} className="px-5 py-2.5 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer text-sm font-medium shadow-sm">Save Offline Draft</button>
+                     <button onClick={() => saveAiDraft(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer text-sm">Publish to Live Feed</button>
                   </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'offers' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-emerald-950/20 p-6 rounded-2xl border border-gray-200 dark:border-emerald-500/20 shadow-sm relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-50 to-transparent dark:from-emerald-900/10 pointer-events-none" />
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  Offers Vault & Monetization
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-emerald-200/50 mt-1">Manage CPA campaigns and partner affiliate offers. Drive organic revenue.</p>
+              </div>
+              <button 
+                onClick={() => { setOfferForm({ status: 'active' }); setEditingOfferId(null); setShowOfferModal(true); }}
+                className="relative z-10 flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Add Campaign Offer
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {offers.map(offer => (
+                <div key={offer.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:border-emerald-400 dark:hover:border-emerald-500/40 transition-colors group flex flex-col">
+                  {offer.imageUrl && (
+                    <div className="h-32 w-full overflow-hidden bg-gray-100 dark:bg-gray-950">
+                      <img src={offer.imageUrl} alt={offer.title} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" loading="lazy" />
+                    </div>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-[9px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${offer.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20'}`}>
+                        {offer.status}
+                      </span>
+                      {offer.payout && <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 px-2 py-0.5 rounded">{offer.payout}</span>}
+                    </div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1 line-clamp-1">{offer.title}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{offer.description}</p>
+                    
+                    <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800 grid grid-cols-2 gap-2 text-center text-xs">
+                      <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-2 border border-gray-100 dark:border-gray-800">
+                        <span className="block text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-wider mb-0.5">Views</span>
+                        <span className="text-gray-900 dark:text-white font-mono">{offer.viewsCount || 0}</span>
+                      </div>
+                      <div className="bg-emerald-50/50 dark:bg-gray-950 rounded-lg p-2 border border-emerald-100 dark:border-gray-800">
+                        <span className="block text-[10px] text-emerald-600 dark:text-gray-500 uppercase tracking-wider mb-0.5">Clicks</span>
+                        <span className="text-emerald-700 dark:text-emerald-400 font-mono">{offer.clicksCount || 0}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 flex gap-2">
+                      <button onClick={() => handleEditOffer(offer)} className="flex-1 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-indigo-200 dark:border-indigo-500/20">Edit</button>
+                      <button onClick={() => handleRemoveOffer(offer.id)} className="flex-[0.5] bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-rose-200 dark:border-rose-500/20">Drop</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {offers.length === 0 && (
+                <div className="col-span-full p-12 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-transparent">
+                  <p className="text-gray-500 text-sm">No active monetization offers found. Deploy your first CPA campaign now.</p>
                 </div>
               )}
             </div>
@@ -580,60 +1008,60 @@ export function AdminDashboard() {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-white">Articles Database</h3>
-                <p className="text-xs text-indigo-200/50 mt-0.5">Manage and organize your published content and offline drafts</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Articles Database</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Manage and organize your published content and offline drafts</p>
               </div>
               <button 
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-indigo-650 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> New Article
               </button>
             </div>
             
-            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] rounded-2xl border border-indigo-900/40 shadow-2xl overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-[#0b0a21] border-b border-indigo-900/40">
+                  <thead className="bg-gray-50 dark:bg-[#0b0a21]/50 border-b border-gray-200 dark:border-gray-800">
                     <tr>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Title</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Status</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Category</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Date</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Views</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Likes</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest text-right">Actions</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Title</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Status</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Category</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Date</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Views</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Likes</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-indigo-950/40">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {posts.map(post => (
-                      <tr key={post.id} className="hover:bg-indigo-500/5 transition-colors">
-                        <td className="p-4 text-sm font-semibold text-white">
+                      <tr key={post.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <td className="p-4 text-sm font-semibold text-gray-900 dark:text-white">
                           <div className="flex items-center gap-3">
-                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-indigo-900/40" />
-                            <span className="truncate max-w-[240px] block text-white font-medium hover:text-indigo-400 transition-colors">{post.title}</span>
+                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-gray-700" loading="lazy" />
+                            <span className="truncate max-w-[240px] block font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer">{post.title}</span>
                           </div>
                         </td>
                         <td className="p-4 text-sm whitespace-nowrap">
                           {post.isDraft ? 
-                            <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/15 rounded-full text-xs font-bold tracking-wide">Draft</span>
+                            <span className="px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/15 rounded-full text-xs font-bold tracking-wide">Draft</span>
                           :
-                            <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/15 rounded-full text-xs font-bold tracking-wide">Published</span>
+                            <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/15 rounded-full text-xs font-bold tracking-wide">Published</span>
                           }
                         </td>
-                        <td className="p-4 text-xs text-gray-500">
-                          <span className="px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/15 text-indigo-300 rounded-md text-[11px] font-bold uppercase tracking-wider">{post.categoryId}</span>
+                        <td className="p-4 text-xs">
+                          <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/15 text-indigo-700 dark:text-indigo-300 rounded-md text-[11px] font-bold uppercase tracking-wider">{post.categoryId}</span>
                         </td>
-                        <td className="p-4 text-sm text-indigo-200/60 font-medium">{post.date}</td>
-                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.viewsCount || 0}</td>
-                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.likesCount || 0}</td>
+                        <td className="p-4 text-sm text-gray-500 dark:text-gray-400 font-medium">{post.date}</td>
+                        <td className="p-4 text-sm text-gray-500 dark:text-gray-400 font-mono font-bold">{post.viewsCount || 0}</td>
+                        <td className="p-4 text-sm text-gray-500 dark:text-gray-400 font-mono font-bold">{post.likesCount || 0}</td>
                         <td className="p-4 text-sm text-right">
                           <div className="flex items-center justify-end gap-1">
                             {post.isDraft && (
-                              <button onClick={() => publishDraft(post.id)} className="text-emerald-400 hover:text-white hover:bg-emerald-500/10 px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all duration-200 cursor-pointer">Publish</button>
+                              <button onClick={() => publishDraft(post.id)} className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 px-2.5 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide transition-all duration-200 cursor-pointer">Publish</button>
                             )}
-                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => openEditModal(post)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-all duration-200" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -649,22 +1077,22 @@ export function AdminDashboard() {
             {/* Create Post Modal */}
             {showCreateModal && (
               <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-indigo-900/40 flex flex-col max-h-[90vh]">
-                  <div className="flex items-center justify-between p-6 border-b border-indigo-950/40">
-                    <h3 className="text-xl font-display font-extrabold text-white tracking-tight">{editingPostId ? 'Edit Article Asset' : 'Generate New Custom Article'}</h3>
-                    <button onClick={closeCreateModal} className="text-gray-400 hover:text-white hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-indigo-900/40 flex flex-col max-h-[90vh]">
+                  <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-indigo-950/40">
+                    <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">{editingPostId ? 'Edit Article Asset' : 'Generate New Custom Article'}</h3>
+                    <button onClick={closeCreateModal} className="text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
                   <div className="p-6 overflow-y-auto flex-1 space-y-4">
                     <form id="create-post-form" onSubmit={handleCreatePost} className="space-y-5">
                       <div>
-                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Title Profile</label>
-                        <input type="text" required value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                        <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Title Profile</label>
+                        <input type="text" required value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Channel Category Destination</label>
-                        <select value={newPost.categoryId} onChange={e => setNewPost({...newPost, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none">
+                        <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Channel Category Destination</label>
+                        <select value={newPost.categoryId} onChange={e => setNewPost({...newPost, categoryId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none">
                           <option value="finance">Finance</option>
                           <option value="technology">Technology</option>
                           <option value="mmo">Make Money</option>
@@ -672,18 +1100,18 @@ export function AdminDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Précis / Article Excerpt</label>
-                        <textarea required rows={2} value={newPost.excerpt} onChange={e => setNewPost({...newPost, excerpt: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none"></textarea>
+                        <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Précis / Article Excerpt</label>
+                        <textarea required rows={2} value={newPost.excerpt} onChange={e => setNewPost({...newPost, excerpt: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none"></textarea>
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-indigo-300/70 uppercase tracking-wider mb-2">Core Article Body (Double return spacing for paragraphs)</label>
-                        <textarea required rows={8} value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-indigo-950 bg-[#060610]/80 text-white placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none font-sans leading-relaxed"></textarea>
+                        <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Core Article Body (Double return spacing for paragraphs)</label>
+                        <textarea required rows={8} value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none font-sans leading-relaxed"></textarea>
                       </div>
                     </form>
                   </div>
-                  <div className="p-6 border-t border-indigo-950/40 flex justify-end gap-3 bg-[#0a091f]">
-                    <button onClick={closeCreateModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
-                    <button type="submit" form="create-post-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white tracking-wide transition-all shadow-lg hover:shadow-indigo-500/10 cursor-pointer">{editingPostId ? 'Save Edits' : 'Publish Asset'}</button>
+                  <div className="p-6 border-t border-gray-100 dark:border-indigo-950/40 flex justify-end gap-3 bg-gray-50 dark:bg-[#0a091f]">
+                    <button onClick={closeCreateModal} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+                    <button type="submit" form="create-post-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer">{editingPostId ? 'Save Edits' : 'Publish Asset'}</button>
                   </div>
                 </motion.div>
               </div>
@@ -694,93 +1122,93 @@ export function AdminDashboard() {
         {activeTab === 'finance-sector' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             {/* Header / Intro Card */}
-            <div className="bg-gradient-to-br from-[#0c0d30] via-[#050510] to-[#04040e] border border-emerald-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/5 blur-3xl pointer-events-none rounded-full" />
+            <div className="bg-white dark:bg-gradient-to-br dark:from-[#0c0d30] dark:via-[#050510] dark:to-[#04040e] border border-gray-200 dark:border-emerald-500/25 p-8 rounded-3xl relative overflow-hidden shadow-sm dark:shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-50 dark:bg-emerald-500/5 blur-3xl pointer-events-none rounded-full" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">Secure Asset Control</span>
-                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">Finance Sector Terminal</h3>
-                  <p className="text-indigo-200/60 mt-1 text-sm">Oversee, scale, and publish specialized content centering FinTech, macroeconomics, and online business.</p>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-3 py-1 rounded-full">Secure Asset Control</span>
+                  <h3 className="text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-3">Finance Sector Terminal</h3>
+                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Oversee, scale, and publish specialized content centering FinTech, macroeconomics, and online business.</p>
                 </div>
                 <button 
                   onClick={() => {
                     setAiForm({ ...aiForm, categoryId: 'finance', topic: 'The Global Macro Shift & E-Business Vectors' });
                     setActiveTab('ai-writer');
                   }}
-                  className="flex items-center gap-2 bg-emerald-650 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-emerald-500/10 cursor-pointer"
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-emerald-600/20 hover:shadow-emerald-500/10 active:scale-95 cursor-pointer"
                 >
                   <Coins className="w-4 h-4 animate-bounce" /> Dispatch Finance AI draft
                 </button>
               </div>
               
               {/* Financial Dashboard Mini KPI Widgets */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Category Distribution</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-gray-100 dark:border-indigo-950/45 pt-6 relative z-10">
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold">Category Distribution</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
                     {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').length} Articles
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Finance & MMO combined</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Finance & MMO combined</p>
                 </div>
                 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Total Sector Views</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold">Total Sector Views</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
                     {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').reduce((acc, curr) => acc + (curr.viewsCount || 0), 0) + 12840}
                   </p>
-                  <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
                     <TrendingUp className="w-3.5 h-3.5" /> +14.2% interest this week
                   </p>
                 </div>
 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Lead CTR Optimization</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">3.88% Avg</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Target CPM is optimized</p>
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold">Lead CTR Optimization</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">3.88% Avg</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Target CPM is optimized</p>
                 </div>
               </div>
             </div>
 
             {/* Filtered Posts Section */}
-            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] border border-indigo-900/40 rounded-2xl shadow-xl overflow-hidden">
-              <div className="p-5 border-b border-indigo-950/40 flex justify-between items-center bg-[#07061b]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-white">Published Finance Ledger</h4>
+            <div className="bg-white dark:bg-gradient-to-b dark:from-[#0c0b24] dark:to-[#04040e] border border-gray-200 dark:border-indigo-900/40 rounded-2xl shadow-sm dark:shadow-xl overflow-hidden">
+              <div className="p-5 border-b border-gray-100 dark:border-indigo-950/40 flex justify-between items-center bg-gray-50 dark:bg-[#07061b]">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">Published Finance Ledger</h4>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
-                  <span className="text-xs text-indigo-300 font-semibold uppercase tracking-wider">Feed Live</span>
+                  <span className="w-2.5 h-2.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse" />
+                  <span className="text-xs text-gray-500 dark:text-indigo-300 font-semibold uppercase tracking-wider">Feed Live</span>
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-[#0b0a21] border-b border-indigo-900/40">
+                  <thead className="bg-white dark:bg-[#0b0a21] border-b border-gray-100 dark:border-indigo-900/40">
                     <tr>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Article Title</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Category</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest">Views</th>
-                      <th className="p-4 text-xs font-bold text-indigo-300/70 uppercase tracking-widest text-right">Actions</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-indigo-300/70 uppercase tracking-widest">Article Title</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-indigo-300/70 uppercase tracking-widest">Category</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-indigo-300/70 uppercase tracking-widest">Views</th>
+                      <th className="p-4 text-xs font-bold text-gray-500 dark:text-indigo-300/70 uppercase tracking-widest text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-indigo-950/40">
+                  <tbody className="divide-y divide-gray-100 dark:divide-indigo-950/40">
                     {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').map(post => (
-                      <tr key={post.id} className="hover:bg-emerald-500/5 transition-colors">
+                      <tr key={post.id} className="hover:bg-emerald-50 dark:hover:bg-emerald-500/5 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
-                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-indigo-900/40" />
-                            <span className="text-sm text-white font-semibold block">{post.title}</span>
+                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover border border-gray-100 dark:border-indigo-900/40" />
+                            <span className="text-sm text-gray-900 dark:text-white font-semibold block">{post.title}</span>
                           </div>
                         </td>
-                        <td className="p-4 text-xs font-bold text-indigo-300/80"><span className="px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded text-[11px] font-bold uppercase">{post.categoryId}</span></td>
-                        <td className="p-4 text-sm text-indigo-200/60 font-mono font-bold">{post.viewsCount || 0}</td>
+                        <td className="p-4 text-xs font-bold"><span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded text-[11px] font-bold uppercase">{post.categoryId}</span></td>
+                        <td className="p-4 text-sm text-gray-500 dark:text-indigo-200/60 font-mono font-bold">{post.viewsCount || 0}</td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => openEditModal(post)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:text-white dark:hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:text-white dark:hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').length === 0 && (
-                      <tr><td colSpan={4} className="p-12 text-center text-indigo-300/40 font-medium">No Finance articles in your pipeline yet. Click 'Dispatch Finance AI draft' at the top to draft one instantly!</td></tr>
+                      <tr><td colSpan={4} className="p-12 text-center text-gray-400 dark:text-indigo-300/40 font-medium">No Finance articles in your pipeline yet. Click 'Dispatch Finance AI draft' at the top to draft one instantly!</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -792,45 +1220,45 @@ export function AdminDashboard() {
         {activeTab === 'technology-hub' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             {/* Intro Header */}
-            <div className="bg-gradient-to-br from-[#0c183a] via-[#050510] to-[#04040e] border border-blue-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 blur-3xl pointer-events-none rounded-full" />
+            <div className="bg-white dark:bg-gradient-to-br dark:from-[#0c183a] dark:via-[#050510] dark:to-[#04040e] border border-gray-200 dark:border-blue-500/25 p-8 rounded-3xl relative overflow-hidden shadow-sm dark:shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50 dark:bg-blue-500/5 blur-3xl pointer-events-none rounded-full" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full">Engineering & Software Nodes</span>
-                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">Technology Hub</h3>
-                  <p className="text-indigo-200/60 mt-1 text-sm">Govern hardware alignments, custom web layouts, and deep programmatic reviews.</p>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-1 rounded-full">Engineering & Software Nodes</span>
+                  <h3 className="text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-3">Technology Hub</h3>
+                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Govern hardware alignments, custom web layouts, and deep programmatic reviews.</p>
                 </div>
                 <button 
                   onClick={() => {
                     setAiForm({ ...aiForm, categoryId: 'technology', topic: 'Next-Generation Fullstack Infrastructures & Edge V8 Compilers' });
                     setActiveTab('ai-writer');
                   }}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-blue-500/10 cursor-pointer"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-blue-600/10 active:scale-95 cursor-pointer"
                 >
                   <Cpu className="w-4 h-4" /> Trigger Tech Generation
                 </button>
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Tech Articles</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-gray-100 dark:border-indigo-950/45 pt-6 relative z-10">
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-bold">Tech Articles</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
                     {posts.filter(p => p.categoryId === 'technology').length} Published
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">High-fidelity programmatic text</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">High-fidelity programmatic text</p>
                 </div>
                 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Vite Bundler Service</p>
-                  <p className="text-2xl font-extrabold mt-1 text-emerald-400">99.98% SLA</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">HMR is suppressed in backend</p>
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-bold">Vite Bundler Service</p>
+                  <p className="text-2xl font-extrabold mt-1 text-emerald-600 dark:text-emerald-400">99.98% SLA</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">HMR is suppressed in backend</p>
                 </div>
 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">Active CDN Coverage</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">100% Globally Passed</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Cloudflare cache status: HIT</p>
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400 font-bold">Active CDN Coverage</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">100% Globally Passed</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Cloudflare cache status: HIT</p>
                 </div>
               </div>
             </div>
@@ -838,27 +1266,27 @@ export function AdminDashboard() {
             {/* Programmatic Article Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {posts.filter(p => p.categoryId === 'technology').map(post => (
-                <div key={post.id} className="bg-gradient-to-br from-[#0a0921] to-[#04040e] border border-indigo-900/40 p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/35 transition-all duration-300">
+                <div key={post.id} className="bg-white dark:bg-gradient-to-br dark:from-[#0a0921] dark:to-[#04040e] border border-gray-200 dark:border-indigo-900/40 p-5 rounded-2xl relative overflow-hidden shadow-sm hover:shadow-md group dark:hover:border-blue-500/35 transition-all duration-300">
                   <div className="flex gap-4">
-                    <img src={post.imageUrl} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0 border border-indigo-950/60" />
+                    <img src={post.imageUrl} alt="" loading="lazy" className="w-16 h-16 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-indigo-950/60" />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-[9px] uppercase font-bold tracking-wider text-blue-400 bg-blue-500/10 border border-blue-500/15 px-2 py-0.5 rounded-full">{post.date}</span>
+                        <span className="text-[9px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/15 px-2 py-0.5 rounded-full">{post.date}</span>
                         <span className="text-[9px] font-mono text-gray-500 font-bold">{post.viewsCount || 0} Views</span>
                       </div>
-                      <h5 className="font-semibold text-white mt-1 text-sm truncate">{post.title}</h5>
-                      <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{post.excerpt}</p>
+                      <h5 className="font-semibold text-gray-900 dark:text-white mt-1 text-sm truncate">{post.title}</h5>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{post.excerpt}</p>
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-indigo-950/30">
-                    <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
-                    <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                  <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-indigo-950/30">
+                    <button onClick={() => openEditModal(post)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:text-white dark:hover:bg-indigo-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Edit2 className="w-3.5 h-3.5" /> Edit</button>
+                    <button onClick={() => deletePost(post.id)} className="text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:text-white dark:hover:bg-rose-500/10 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
                 </div>
               ))}
               {posts.filter(p => p.categoryId === 'technology').length === 0 && (
-                <div className="col-span-2 bg-[#060610]/50 p-12 rounded-2xl border border-dashed border-indigo-900/40 text-center">
-                  <p className="text-sm text-indigo-300/40">No technology articles have been registered. Click the button above to seed some!</p>
+                <div className="col-span-2 bg-gray-50 dark:bg-[#060610]/50 p-12 rounded-2xl border border-dashed border-gray-200 dark:border-indigo-900/40 text-center">
+                  <p className="text-sm text-gray-400 dark:text-indigo-300/40">No technology articles have been registered. Click the button above to seed some!</p>
                 </div>
               )}
             </div>
@@ -868,77 +1296,77 @@ export function AdminDashboard() {
         {activeTab === 'ai-systems' && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
             {/* Banner Header */}
-            <div className="bg-gradient-to-br from-[#120c38] via-[#050510] to-[#04040e] border border-purple-500/25 p-8 rounded-3xl relative overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/5 blur-3xl pointer-events-none rounded-full" />
+            <div className="bg-white dark:bg-gradient-to-br dark:from-[#120c38] dark:via-[#050510] dark:to-[#04040e] border border-gray-200 dark:border-purple-500/25 p-8 rounded-3xl relative overflow-hidden shadow-sm dark:shadow-2xl">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-purple-50 dark:bg-purple-500/5 blur-3xl pointer-events-none rounded-full" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-400 bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full">Gemini Intelligent Agents & Cover Art Protocols</span>
-                  <h3 className="text-2xl font-display font-extrabold text-white mt-3">AI Systems Control</h3>
-                  <p className="text-indigo-200/60 mt-1 text-sm">Calibrate generation triggers, set creative limits, and supervise autonomous workflows.</p>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 px-3 py-1 rounded-full">Gemini Intelligent Agents & Cover Art Protocols</span>
+                  <h3 className="text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-3">AI Systems Control</h3>
+                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Calibrate generation triggers, set creative limits, and supervise autonomous workflows.</p>
                 </div>
                 <button 
                   onClick={() => {
                     setAiForm({ ...aiForm, categoryId: 'ai', topic: 'The Cognitive Shift: Agentic Autonomous LLMs & Human Integration' });
                     setActiveTab('ai-writer');
                   }}
-                  className="flex items-center gap-2 bg-purple-650 hover:bg-purple-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-purple-500/10 cursor-pointer"
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-purple-600/20 active:scale-95 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" /> Launch AI Studio
                 </button>
               </div>
 
               {/* Key Indicators */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-indigo-950/45 pt-6">
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Grounding Success Rate</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">99.4%</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Search Engine Grounding online</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8 border-t border-gray-100 dark:border-indigo-950/45 pt-6 relative z-10">
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-bold">Grounding Success Rate</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">99.4%</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Search Engine Grounding online</p>
                 </div>
                 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Articles in Model</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-bold">Articles in Model</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
                     {posts.filter(p => p.categoryId === 'ai').length} Articles
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">Using high quality synthetic drafting</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Using high quality synthetic drafting</p>
                 </div>
 
-                <div className="bg-[#060610]/60 p-4 rounded-xl border border-indigo-900/30">
-                  <p className="text-[10px] uppercase tracking-wider text-purple-400 font-bold">Image generation Engine</p>
-                  <p className="text-2xl font-extrabold mt-1 text-white">Imagen 4.0 Pro</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">High contrast premium resolution</p>
+                <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
+                  <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-bold">Image generation Engine</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">Imagen 4.0 Pro</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">High contrast premium resolution</p>
                 </div>
               </div>
             </div>
 
             {/* Dynamic Interactive AI Settings Control Card */}
-            <div className="bg-gradient-to-br from-[#0c0b24] to-[#04040e] border border-indigo-900/40 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-              <h4 className="text-sm font-bold uppercase tracking-wider text-white mb-4 flex items-center gap-2">
-                <Zap className="w-4 h-4 text-purple-400 animate-pulse" /> Advanced Model Weights & Calibrations
+            <div className="bg-white dark:bg-gradient-to-br dark:from-[#0c0b24] dark:to-[#04040e] border border-gray-200 dark:border-indigo-900/40 p-6 rounded-2xl shadow-sm dark:shadow-xl relative overflow-hidden">
+              <h4 className="text-sm font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-purple-500 dark:text-purple-400 animate-pulse" /> Advanced Model Weights & Calibrations
               </h4>
-              <p className="text-xs text-indigo-200/55 mb-6">Modify these settings to fine-tune the editorial voice and coverage patterns of future custom articles created by the AI Writer.</p>
+              <p className="text-xs text-gray-500 dark:text-indigo-200/55 mb-6">Modify these settings to fine-tune the editorial voice and coverage patterns of future custom articles created by the AI Writer.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-indigo-300 uppercase">Creative Temperature ({aiSettings.temperature})</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300 uppercase">Creative Temperature ({aiSettings.temperature})</label>
                   <input 
                     type="range" min="0.1" max="1.5" step="0.1" 
                     value={aiSettings.temperature} 
                     onChange={e => setAiSettings({ ...aiSettings, temperature: parseFloat(e.target.value) })}
-                    className="w-full h-1 rounded-lg cursor-pointer accent-purple-500" 
+                    className="w-full h-1 rounded-lg cursor-pointer accent-purple-600 dark:accent-purple-500" 
                   />
-                  <div className="flex justify-between text-[10px] text-gray-500">
+                  <div className="flex justify-between text-[10px] text-gray-400 dark:text-gray-500">
                     <span>Deterministic (0.1)</span>
                     <span>Inventive (1.5)</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-indigo-300 uppercase">Selected Engine Backbone</label>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300 uppercase">Selected Engine Backbone</label>
                   <select 
                     value={aiSettings.modelName} 
                     onChange={e => setAiSettings({ ...aiSettings, modelName: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-indigo-950 bg-[#060610] text-[#f1f1f6] text-xs outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50 dark:bg-[#060610] text-gray-900 dark:text-[#f1f1f6] text-xs outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all"
                   >
                     <option value="gemini-2.5-pro">Gemini 2.5 Pro (Extreme Precision)</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash (Blazing Fluid)</option>
@@ -946,42 +1374,42 @@ export function AdminDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-indigo-300 uppercase">Safety & Truth Grounding</label>
-                  <div className="flex items-center gap-3 bg-[#060610] p-2 rounded-xl border border-indigo-950">
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300 uppercase">Safety & Truth Grounding</label>
+                  <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#060610] p-2 rounded-xl border border-gray-200 dark:border-indigo-950">
                     <input 
                       type="checkbox" 
                       checked={aiSettings.groundingActive} 
                       onChange={e => setAiSettings({ ...aiSettings, groundingActive: e.target.checked })}
-                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 bg-indigo-950 border-indigo-950" 
+                      className="rounded text-purple-600 focus:ring-purple-500 h-4 w-4 bg-white dark:bg-indigo-950 border-gray-300 dark:border-indigo-950" 
                     />
-                    <span className="text-xs text-indigo-200 font-medium">Deep Research grounding</span>
+                    <span className="text-xs text-gray-700 dark:text-indigo-200 font-medium">Deep Research grounding</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* AI Generated Articles List */}
-            <div className="bg-gradient-to-b from-[#0c0b24] to-[#04040e] border border-indigo-900/40 rounded-2xl overflow-hidden shadow-xl">
-              <div className="p-4 bg-[#0a0a20] border-b border-indigo-950/40 flex justify-between items-center">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">AI Content Portfolio</span>
-                <span className="text-[10px] font-mono text-purple-400 uppercase font-bold tracking-wider">{posts.filter(p => p.categoryId === 'ai').length} records synced</span>
+            <div className="bg-white dark:bg-gradient-to-b dark:from-[#0c0b24] dark:to-[#04040e] border border-gray-200 dark:border-indigo-900/40 rounded-2xl overflow-hidden shadow-sm dark:shadow-xl">
+              <div className="p-4 bg-gray-50 dark:bg-[#0a0a20] border-b border-gray-200 dark:border-indigo-950/40 flex justify-between items-center">
+                <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">AI Content Portfolio</span>
+                <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 uppercase font-bold tracking-wider">{posts.filter(p => p.categoryId === 'ai').length} records synced</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
-                  <tbody className="divide-y divide-indigo-950/30">
+                  <tbody className="divide-y divide-gray-100 dark:divide-indigo-950/30">
                     {posts.filter(p => p.categoryId === 'ai').map(post => (
-                      <tr key={post.id} className="hover:bg-purple-500/5 transition-colors">
+                      <tr key={post.id} className="hover:bg-gray-50 dark:hover:bg-purple-500/5 transition-colors">
                         <td className="p-4">
                           <div className="flex items-center gap-3">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
-                            <span className="text-sm text-white font-medium">{post.title}</span>
+                            <span className="text-sm text-gray-900 dark:text-white font-medium">{post.title}</span>
                           </div>
                         </td>
-                        <td className="p-4 text-xs text-indigo-200/50 font-mono">{post.date}</td>
+                        <td className="p-4 text-xs text-gray-500 dark:text-indigo-200/50 font-mono">{post.date}</td>
                         <td className="p-4 text-right text-xs">
                           <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => openEditModal(post)} className="text-indigo-400 hover:text-white hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => deletePost(post.id)} className="text-rose-400 hover:text-white hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => openEditModal(post)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:text-white dark:hover:bg-indigo-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Edit Article"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => deletePost(post.id)} className="text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:text-white dark:hover:bg-rose-500/10 p-2 rounded-lg cursor-pointer transition-colors" title="Delete Article"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </td>
                       </tr>
@@ -996,6 +1424,65 @@ export function AdminDashboard() {
           </motion.div>
         )}
       </div>
+      {/* Offer Modal */}
+      {showOfferModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-indigo-900/40 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-indigo-950/40">
+              <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">{editingOfferId ? 'Update Monetization Offer' : 'Launch New Offer'}</h3>
+              <button type="button" onClick={() => setShowOfferModal(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <form id="offer-form" onSubmit={handleSaveOffer} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Offer Title</label>
+                  <input type="text" required value={offerForm.title || ''} onChange={e => setOfferForm({...offerForm, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Description</label>
+                  <textarea required value={offerForm.description || ''} onChange={e => setOfferForm({...offerForm, description: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 transition-all outline-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Target URL (Link)</label>
+                    <input type="url" required value={offerForm.url || ''} onChange={e => setOfferForm({...offerForm, url: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Banner Image URL</label>
+                    <input type="url" required value={offerForm.imageUrl || ''} onChange={e => setOfferForm({...offerForm, imageUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 transition-all outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Provider (e.g. MyLead)</label>
+                    <input type="text" required value={offerForm.provider || ''} onChange={e => setOfferForm({...offerForm, provider: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Payout Label</label>
+                    <input type="text" value={offerForm.payout || ''} onChange={e => setOfferForm({...offerForm, payout: e.target.value})} placeholder="$5.00 CPA" className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-emerald-500 transition-all outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Status</label>
+                    <select value={offerForm.status || 'active'} onChange={e => setOfferForm({...offerForm, status: e.target.value as any})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-emerald-500 transition-all outline-none">
+                      <option value="active">Active</option>
+                      <option value="paused">Paused</option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div className="p-6 border-t border-gray-100 dark:border-indigo-950/40 bg-gray-50 dark:bg-[#0a0a20] flex justify-end gap-3">
+              <button type="button" onClick={() => setShowOfferModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+              <button form="offer-form" type="submit" className="px-5 py-2.5 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95">
+                {editingOfferId ? 'Update Sequence' : 'Launch Sequence'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

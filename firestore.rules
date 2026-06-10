@@ -115,5 +115,14 @@ service cloud.firestore {
         incoming().subscribedAt is string &&
         incoming().subscribedAt.size() <= 50;
     }
+    // 5. Offers / CPA Campaigns Collection rules
+    match /offers/{offerId} {
+      allow read: if true;
+      allow create: if isBlogAdmin();
+      allow update: if isBlogAdmin() || (
+        incoming().diff(existing()).affectedKeys().hasOnly(['clicksCount', 'viewsCount'])
+      );
+      allow delete: if isBlogAdmin();
+    }
   }
 }

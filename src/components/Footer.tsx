@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Shield } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -37,7 +38,19 @@ export function Footer() {
             </ul>
           </div>
         </div>
-        <div className="mt-16 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
+        
+        {/* Centered Premium Admin Command Console Access Button at bottom */}
+        <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-center">
+          <Link 
+            to="/admin" 
+            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-505 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-indigo-500/10"
+          >
+            <Shield className="w-4 h-4 text-indigo-200" />
+            <span>Secure Admin Command Center</span>
+          </Link>
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             &copy; {new Date().getFullYear()} Oinone Media. All rights reserved.
           </p>

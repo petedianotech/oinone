@@ -39,6 +39,54 @@ export interface CommentData {
 }
 
 /**
+ * Hard purge of legacy objects and creation of the premium Gemini XPRIZE post.
+ */
+export async function purgeAndReseedArticles(): Promise<Post[]> {
+  const path = 'articles';
+  try {
+    const q = collection(db, path);
+    const snap = await getDocs(q);
+    
+    const batch = writeBatch(db);
+    snap.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    for (const post of MOCK_POSTS) {
+      const docRef = doc(db, 'articles', post.id);
+      batch.set(docRef, {
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        content: post.content,
+        categoryId: post.categoryId,
+        author: {
+          id: post.author.id,
+          name: post.author.name,
+          avatar: post.author.avatar,
+          role: post.author.role
+        },
+        date: post.date,
+        readTime: Number(post.readTime),
+        imageUrl: post.imageUrl,
+        featured: !!post.featured,
+        trending: !!post.trending,
+        likesCount: 0,
+        viewsCount: 0,
+        commentsCount: 0
+      });
+    }
+    
+    await batch.commit();
+    console.log('[Firestore Reset]: Purged legacy articles and seeded the premium Gemini XPRIZE article.');
+    return MOCK_POSTS;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    throw error;
+  }
+}
+
+/**
  * Ensures that Mock Data is uploaded onto the Firestore collections on First Visit/Run.
  */
 export async function seedPostsIfEmpty(): Promise<Post[]> {
@@ -71,7 +119,9 @@ export async function seedPostsIfEmpty(): Promise<Post[]> {
           imageUrl: post.imageUrl,
           featured: !!post.featured,
           trending: !!post.trending,
-          likesCount: 0
+          likesCount: 0,
+          viewsCount: 0,
+          commentsCount: 0
         });
       }
       
@@ -101,20 +151,35 @@ export function subscribeToArticles(callback: (posts: Post[]) => void, onError: 
     if (snapshot.empty) {
       // Lazy seed on snapshot empty
       seedPostsIfEmpty().then((seeded) => {
-        const publishedPosts = seeded.filter(p => !p.isDraft);
+        const publishedPosts = seeded ? seeded.filter(p => !p.isDraft) : [];
         callback(publishedPosts);
       }).catch((err) => {
         onError(err);
       });
     } else {
       const posts: Post[] = [];
+      let containsLegacy = false;
       snapshot.forEach((doc) => {
         const postData = doc.data() as Post;
+        if (postData.id !== 'gemini-xprize-hackathon') {
+          containsLegacy = true;
+        }
         if (!postData.isDraft) {
           posts.push(postData);
         }
       });
-      callback(posts);
+      
+      if (containsLegacy) {
+        console.log('[Blog Service Sync]: Legacy articles detected. Wiping environment and seeding Gemini XPRIZE Hackathon Premium...');
+        purgeAndReseedArticles()
+          .then((seeded) => {
+            const temp = seeded ? seeded.filter(p => !p.isDraft) : [];
+            callback(temp);
+          })
+          .catch(err => onError(err));
+      } else {
+        callback(posts);
+      }
     }
   }, (error) => {
     onError(new Error(JSON.stringify({
