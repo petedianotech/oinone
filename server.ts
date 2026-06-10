@@ -208,7 +208,7 @@ ${researchData}
 Formatting Guidelines:
 - Format the content using clean, semantic HTML tags (do NOT wrap in <html>, <head>, or <body>). 
 - SEO Title: Wrap the captivating headline in a single <h1> tag.
-- Meta Description: Provide an engaging meta description written at the very top, formatted as a <p className="text-gray-500 italic mb-6"> or <blockquote>, clearly labeled.
+- Meta Description: Provide an engaging meta description written at the very top, formatted as a <p className="text-gray-500 italic mb-6"> or <blockquote>. Do NOT include the label "Meta Description" or parenthetical labels like "(Meta Description)". Simply output the description text directly inside the tags.
 - Subheaders: Structure the body with clear, compelling <h2> and <h3> tags.
 - Detailed Sections: Write with high density of value, bullet points, and clean lists.
 - FAQ Section: Include a concise, high-value FAQ section towards the end of the article using <h2> and <h3>.
@@ -255,6 +255,11 @@ SUMMARY: [your simple English summary]`;
     if (cleanContent.startsWith("```")) {
       cleanContent = cleanContent.replace(/^```[a-zA-Z]*\n/, "").replace(/\n```$/, "").trim();
     }
+
+    // Clean up any "(Meta Description)" or "Meta Description:" label inside the first paragraph, blockquote, or raw beginning
+    cleanContent = cleanContent
+      .replace(/(<(p|blockquote)[^>]*>)\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '$1')
+      .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
 
     // Step 3: Image Acquisition Phase
     let generatedImages: string[] = [];

@@ -244,9 +244,14 @@ export function ArticlePage() {
                 let elementObj: React.ReactNode;
                 
                 if (hasHTML) {
-                  elementObj = <div key={`p-${idx}`} className="mb-8 animate-fade-in" dangerouslySetInnerHTML={{ __html: paragraph }} />;
+                  const cleanedParagraph = paragraph
+                    .replace(/(<(p|blockquote)[^>]*>)\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '$1')
+                    .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
+                  elementObj = <div key={`p-${idx}`} className="mb-8 animate-fade-in" dangerouslySetInnerHTML={{ __html: cleanedParagraph }} />;
                 } else if (idx === 0) {
-                  elementObj = <p key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10">{paragraph}</p>;
+                  const cleanedParagraph = paragraph
+                    .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
+                  elementObj = <p key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10">{cleanedParagraph}</p>;
                 } else {
                   elementObj = <p key={`p-${idx}`} className="mb-8">{paragraph}</p>;
                 }

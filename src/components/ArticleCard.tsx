@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Post } from '../types';
 import { CATEGORIES, cn } from '../lib/utils';
-import { Clock, Eye } from 'lucide-react';
+import { Clock, Eye, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
@@ -45,6 +45,10 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
           <p className="text-gray-400 text-sm line-clamp-2 mb-6 font-medium">
             {post.excerpt}
           </p>
+          <div className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#a855f7] group-hover:text-cyan-400 transition-colors">
+            <span>Read Article</span>
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 duration-200" />
+          </div>
           <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-4">
             <div className="flex items-center space-x-3">
               <img src={post.author.avatar} alt={post.author.name} className="h-8 w-8 rounded-full border border-white/20" />
@@ -116,6 +120,12 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
             {post.excerpt}
           </p>
         </Link>
+        <div className="mb-2 mt-1">
+          <Link to={`/article/${post.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-800 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors group/btn">
+            <span>Read Article</span>
+            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1 duration-200" />
+          </Link>
+        </div>
         <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
            <div className="flex items-center space-x-3">
             <img src={post.author.avatar} alt={post.author.name} className="h-7 w-7 rounded-full border border-gray-200 dark:border-white/10" loading="lazy" />

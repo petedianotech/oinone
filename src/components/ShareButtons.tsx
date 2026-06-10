@@ -107,9 +107,11 @@ export function ShareButtons({ title, url }: ShareButtonsProps) {
               <span className="drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110 duration-200">
                 {platform.icon}
               </span>
-              <span className="font-sans font-bold tracking-wide uppercase text-[10px] sm:text-xs">
-                {platform.name}
-              </span>
+              {platform.name !== 'X' && (
+                <span className="font-sans font-bold tracking-wide uppercase text-[10px] sm:text-xs">
+                  {platform.name}
+                </span>
+              )}
             </motion.div>
           </a>
         ))}
