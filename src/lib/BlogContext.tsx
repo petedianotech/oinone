@@ -14,18 +14,43 @@ interface BlogContextType {
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
 
 export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<Post[]>(() => {
+    try {
+      const cached = localStorage.getItem('oinone_cached_posts');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('oinone_cached_posts');
+      return !cached;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
-    // Standard real-time binding to Firestore
+    // Standard real-time binding to Firestore with caching fallback
     const unsubscribe = subscribeToArticles(
       (realtimePosts) => {
         setPosts(realtimePosts);
         setLoading(false);
+        try {
+          localStorage.setItem('oinone_cached_posts', JSON.stringify(realtimePosts));
+        } catch (e) {
+          console.error(e);
+        }
       },
       (error) => {
         console.error('[BlogProvider Listener Error]:', error);
+        try {
+          const cached = localStorage.getItem('oinone_cached_posts');
+          if (cached) {
+            setPosts(JSON.parse(cached));
+          }
+        } catch (e) {}
         setLoading(false);
       }
     );
@@ -34,7 +59,17 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const getPost = (id: string) => {
-    return posts.find((p) => p.id === id);
+    const found = posts.find((p) => p.id === id);
+    if (found) return found;
+    try {
+      const cached = localStorage.getItem(`offline_post_${id}`);
+      if (cached) {
+        return JSON.parse(cached) as Post;
+      }
+    } catch (e) {
+      console.error('[BlogContext Offline getPost]:', e);
+    }
+    return undefined;
   };
 
   const getCategoryPosts = (categoryId: CategoryId) => {

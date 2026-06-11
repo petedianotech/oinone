@@ -1,7 +1,7 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn } from '../lib/utils';
-import { Clock, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles, Bookmark, Share2 } from 'lucide-react';
+import { Clock, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles, Bookmark, Share2, Play, Pause, Square, Volume2 } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { ShareButtons } from '../components/ShareButtons';
 import { motion, useScroll, useSpring } from 'motion/react';
@@ -20,7 +20,14 @@ export function ArticlePage() {
     restDelta: 0.001
   });
 
-  const [comments, setComments] = useState<CommentData[]>([]);
+  const [comments, setComments] = useState<CommentData[]>(() => {
+    try {
+      const cachedComments = localStorage.getItem(`offline_comments_${articleId}`);
+      return cachedComments ? JSON.parse(cachedComments) : [];
+    } catch {
+      return [];
+    }
+  });
   const [newCommentName, setNewCommentName] = useState('');
   const [newCommentContent, setNewCommentContent] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -28,6 +35,12 @@ export function ArticlePage() {
   const [likesCount, setLikesCount] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Speech System States
+  const [isPlayingSpeech, setIsPlayingSpeech] = useState(false);
+  const [isPausedSpeech, setIsPausedSpeech] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
+
   const [reactions, setReactions] = useState<{
     like: boolean;
     informative: boolean;
@@ -51,6 +64,11 @@ export function ArticlePage() {
     } catch {
       setReactions({ like: false, informative: false, inspiring: false, mindBlown: false });
     }
+
+    // Stop ongoing speaks on change
+    window.speechSynthesis.cancel();
+    setIsPlayingSpeech(false);
+    setIsPausedSpeech(false);
   }, [articleId]);
 
   useEffect(() => {
@@ -60,11 +78,27 @@ export function ArticlePage() {
 
     const unsubscribeComments = subscribeToComments(
       articleId,
-      (loadedComments) => setComments(loadedComments),
-      (error) => console.error('[ArticlePage]: Loading comment thread. Default to empty.', error)
+      (loadedComments) => {
+        setComments(loadedComments);
+        try {
+          if (localStorage.getItem(`saved_${articleId}`)) {
+            localStorage.setItem(`offline_comments_${articleId}`, JSON.stringify(loadedComments));
+          }
+        } catch {}
+      },
+      (error) => {
+        console.error('[ArticlePage]: Loading comment thread. Default to offline cache.', error);
+        try {
+          const cachedComments = localStorage.getItem(`offline_comments_${articleId}`);
+          if (cachedComments) setComments(JSON.parse(cachedComments));
+        } catch {}
+      }
     );
 
-    return () => unsubscribeComments();
+    return () => {
+      unsubscribeComments();
+      window.speechSynthesis.cancel();
+    };
   }, [articleId]);
 
   if (loading) {
@@ -73,11 +107,11 @@ export function ArticlePage() {
         <div className="max-w-4xl mx-auto px-4 h-[60vh] rounded-3xl bg-[#121216] animate-pulse">
            <div className="flex items-center justify-center h-full">
              <div className="flex flex-col items-center gap-4">
-                <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
-                <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Initializing Neural Link...</p>
+                 <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
+                 <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Initializing Neural Link...</p>
              </div>
            </div>
-        </div>
+         </div>
       </div>
     );
   }
@@ -87,6 +121,153 @@ export function ArticlePage() {
   if (!post) {
     return <Navigate to="/" replace />;
   }
+
+  // TTS Reader
+  const speakArticle = () => {
+    if (isPlayingSpeech) {
+      if (isPausedSpeech) {
+        window.speechSynthesis.resume();
+        setIsPausedSpeech(false);
+      } else {
+        window.speechSynthesis.pause();
+        setIsPausedSpeech(true);
+      }
+      return;
+    }
+
+    // Modern Chrome/browser fix: cancel first to clear background queues
+    window.speechSynthesis.cancel();
+
+    // Small delay ensures the browser audio engine finishes the cancellation pipeline
+    setTimeout(() => {
+      const cleanTextHTML = (htmlStr: string) => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = htmlStr;
+        return tmp.textContent || tmp.innerText || '';
+      };
+
+      // Split text into short, highly stable segments to fully avoid browser length/character limit cuts
+      const textSegments: string[] = [];
+      if (post.title) textSegments.push(post.title);
+      if (post.excerpt) textSegments.push(post.excerpt);
+      
+      post.content.forEach(p => {
+        const cleanP = cleanTextHTML(p);
+        if (cleanP) {
+          // Match standard sentence terminators (. ! ?)
+          const sentences = cleanP.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+          textSegments.push(...sentences);
+        }
+      });
+
+      if (textSegments.length === 0) return;
+
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                             voices.find(v => v.lang.startsWith('en')) ||
+                             voices[0];
+
+      setIsPlayingSpeech(true);
+      setIsPausedSpeech(false);
+
+      let activeUtterancesCount = textSegments.length;
+
+      textSegments.forEach((segment) => {
+        const utterance = new SpeechSynthesisUtterance(segment);
+        utterance.rate = speechRate;
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        const handleFinish = () => {
+          activeUtterancesCount--;
+          if (activeUtterancesCount <= 0) {
+            setIsPlayingSpeech(false);
+            setIsPausedSpeech(false);
+          }
+        };
+
+        utterance.onend = handleFinish;
+        utterance.onerror = (e) => {
+          console.warn("Speech synthesis error or canceled:", e);
+          handleFinish();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      });
+    }, 100);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsPlayingSpeech(false);
+    setIsPausedSpeech(false);
+  };
+
+  const updateSpeechRate = (newRate: number) => {
+    setSpeechRate(newRate);
+    if (isPlayingSpeech) {
+      window.speechSynthesis.cancel();
+      setIsPlayingSpeech(false);
+      setIsPausedSpeech(false);
+      
+      setTimeout(() => {
+        const cleanTextHTML = (htmlStr: string) => {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = htmlStr;
+          return tmp.textContent || tmp.innerText || '';
+        };
+
+        const textSegments: string[] = [];
+        if (post.title) textSegments.push(post.title);
+        if (post.excerpt) textSegments.push(post.excerpt);
+        
+        post.content.forEach(p => {
+          const cleanP = cleanTextHTML(p);
+          if (cleanP) {
+            const sentences = cleanP.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
+            textSegments.push(...sentences);
+          }
+        });
+
+        if (textSegments.length === 0) return;
+
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
+                               voices.find(v => v.lang.startsWith('en')) ||
+                               voices[0];
+
+        setIsPlayingSpeech(true);
+        setIsPausedSpeech(false);
+
+        let activeUtterancesCount = textSegments.length;
+
+        textSegments.forEach((segment) => {
+          const ut = new SpeechSynthesisUtterance(segment);
+          ut.rate = newRate;
+          if (preferredVoice) {
+            ut.voice = preferredVoice;
+          }
+
+          const handleFinish = () => {
+            activeUtterancesCount--;
+            if (activeUtterancesCount <= 0) {
+              setIsPlayingSpeech(false);
+              setIsPausedSpeech(false);
+            }
+          };
+
+          ut.onend = handleFinish;
+          ut.onerror = (e) => {
+            console.warn("Speech synthesis error or canceled:", e);
+            handleFinish();
+          };
+
+          window.speechSynthesis.speak(ut);
+        });
+      }, 100);
+    }
+  };
 
   const activeLikesCount = likesCount !== null ? likesCount : (post.likesCount || 0);
   const category = CATEGORIES[post.categoryId];
@@ -117,14 +298,21 @@ export function ArticlePage() {
   };
 
   const toggleSave = () => {
-    if (!articleId) return;
+    if (!articleId || !post) return;
     const newStatus = !saved;
     setSaved(newStatus);
     try {
-      if (newStatus) localStorage.setItem(`saved_${articleId}`, "true");
-      else localStorage.removeItem(`saved_${articleId}`);
+      if (newStatus) {
+        localStorage.setItem(`saved_${articleId}`, "true");
+        localStorage.setItem(`offline_post_${articleId}`, JSON.stringify(post));
+        localStorage.setItem(`offline_comments_${articleId}`, JSON.stringify(comments));
+      } else {
+        localStorage.removeItem(`saved_${articleId}`);
+        localStorage.removeItem(`offline_post_${articleId}`);
+        localStorage.removeItem(`offline_comments_${articleId}`);
+      }
     } catch (err) {}
-  }
+  };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,6 +419,93 @@ export function ArticlePage() {
 
         {/* Main Article Content */}
         <article className="lg:col-span-7 w-full sm:-mt-10 relative z-20">
+          
+          {/* Futuristic Audio Synthesizer / TTS Control Center */}
+          <div className="mb-8 p-5 rounded-3xl bg-[#121216]/95 border border-white/5 relative overflow-hidden backdrop-blur-md shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/5 via-brand-cyan/5 to-brand-purple/5 opacity-50" />
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "p-3.5 rounded-2xl transition-all duration-300",
+                  isPlayingSpeech && !isPausedSpeech 
+                    ? "bg-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse" 
+                    : "bg-white/5 text-gray-400"
+                )}>
+                  <Volume2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white uppercase tracking-wider">Listen to Article</h4>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
+                    {isPlayingSpeech 
+                      ? (isPausedSpeech ? "Audio System Paused" : "Synthesizing Neural Narration...") 
+                      : "Standard Browser Narration"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Control Action Buttons */}
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                {/* Speed Select Button */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-gray-300">
+                  <span className="text-gray-500 uppercase tracking-wider">Speed:</span>
+                  <button 
+                    onClick={() => updateSpeechRate(speechRate === 1 ? 1.25 : speechRate === 1.25 ? 1.5 : speechRate === 1.5 ? 1.75 : 1)}
+                    className="hover:text-brand-cyan transition-colors font-mono cursor-pointer"
+                  >
+                    {speechRate}x
+                  </button>
+                </div>
+
+                {/* Play/Pause Trigger */}
+                <button 
+                  onClick={speakArticle}
+                  className={cn(
+                    "flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer",
+                    isPlayingSpeech && !isPausedSpeech
+                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/25"
+                      : "bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20 hover:bg-brand-cyan/25"
+                  )}
+                >
+                  {isPlayingSpeech && !isPausedSpeech ? (
+                    <>
+                      <Pause className="w-4 h-4" />
+                      <span>Pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      <span>{isPausedSpeech ? "Resume" : "Listen"}</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Stop Trigger */}
+                {isPlayingSpeech && (
+                  <button 
+                    onClick={stopSpeaking}
+                    className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/10 transition-colors cursor-pointer"
+                    title="Stop Playback"
+                  >
+                    <Square className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Simulated wave animation when speaking */}
+            {isPlayingSpeech && !isPausedSpeech && (
+              <div className="mt-4 flex items-center justify-center gap-1.5 h-6 opacity-80">
+                <span className="w-1 h-3 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '0.6s' }} />
+                <span className="w-1 h-5 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0.15s', animationDuration: '0.5s' }} />
+                <span className="w-1 h-4 bg-brand-purple rounded-full animate-bounce" style={{ animationDelay: '0.3s', animationDuration: '0.7s' }} />
+                <span className="w-1 h-6 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0.45s', animationDuration: '0.4s' }} />
+                <span className="w-1 h-3 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0.6s', animationDuration: '0.55s' }} />
+                <span className="w-1 h-5 bg-brand-purple rounded-full animate-bounce" style={{ animationDelay: '0.75s', animationDuration: '0.6s' }} />
+              </div>
+            )}
+          </div>
+
           <div className="prose prose-invert prose-lg prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
             {(() => {
               const renderedElements: React.ReactNode[] = [];
