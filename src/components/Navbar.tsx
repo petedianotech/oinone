@@ -63,7 +63,7 @@ export function Navbar() {
           <Link to="/" className="flex-shrink-0 flex items-center gap-3 relative group">
             <div className="absolute inset-0 bg-brand-cyan/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             <img 
-              src="/premium_saas_icon.png" 
+              src="/oinone_blog_icon.jpg" 
               alt="Oinone Premium Logo" 
               className="h-9 w-9 rounded-xl shadow-lg border border-white/20 object-cover relative z-10 hover:scale-105 transition-transform"
               referrerPolicy="no-referrer"
@@ -273,13 +273,7 @@ export function Navbar() {
                         {link.name}
                       </Link>
                     ))}
-                    <Link 
-                        to="/admin"
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-gray-300 hover:text-white transition-colors border border-transparent hover:border-white/5"
-                    >
-                      Admin Dashboard
-                    </Link>
+
                   </div>
                 </div>
                 

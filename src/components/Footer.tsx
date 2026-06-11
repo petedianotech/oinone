@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Shield } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -33,23 +32,11 @@ export function Footer() {
             <ul className="space-y-3">
               <li><Link to="/about" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">About Us</Link></li>
               <li><a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Creator Portfolio</a></li>
-              <li><Link to="/admin" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Admin</Link></li>
               <li><a href="mailto:peterleodamiano@gmail.com" className="text-sm text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">Contact</a></li>
             </ul>
           </div>
         </div>
         
-        {/* Centered Premium Admin Command Console Access Button at bottom */}
-        <div className="mt-12 pt-8 border-t border-gray-100 dark:border-gray-800 flex justify-center">
-          <Link 
-            to="/admin" 
-            className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-505 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/10 hover:shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-indigo-500/10"
-          >
-            <Shield className="w-4 h-4 text-indigo-200" />
-            <span>Secure Admin Command Center</span>
-          </Link>
-        </div>
-
         <div className="mt-8 pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-500 dark:text-gray-400">
             &copy; {new Date().getFullYear()} Oinone Media. All rights reserved.
