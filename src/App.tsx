@@ -47,9 +47,12 @@ function AppContent() {
           <Route path="/vault" element={<OffersVault />} />
           <Route path="/about" element={<About />} />
           <Route path="/privacy-policy" element={<Privacy />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms-of-service" element={<Terms />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="/disclaimer" element={<Disclaimer />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/category/:categoryId" element={<CategoryPage />} />
           <Route path="/:categoryId" element={<CategoryPage />} />
           <Route path="/article/:articleId" element={<ArticlePage />} />
         </Routes>

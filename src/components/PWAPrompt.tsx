@@ -89,7 +89,7 @@ export function PWAPrompt() {
       if (permission === 'granted') {
         const _notification = new Notification("Oinone Insights Enabled!", {
           body: "You're all set! You will now receive premium technology, AI, and finance publications immediately.",
-          icon: "/app_icon.png"
+          icon: "/oinone_blog_icon.jpg"
         });
       }
       setInAppStatus('success');
@@ -129,7 +129,7 @@ export function PWAPrompt() {
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
             <img
-              src="/app_icon.png"
+              src="/oinone_blog_icon.jpg"
               alt="Oinone App Logo"
               className="h-12 w-12 rounded-xl shadow-md border border-gray-100 dark:border-gray-800 object-cover"
               referrerPolicy="no-referrer"
