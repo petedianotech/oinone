@@ -81,7 +81,12 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getTrendingPosts = () => {
-    return posts.filter((p) => p.trending);
+    return [...posts]
+      .sort((a, b) => {
+        const scoreA = (a.likesCount || 0) * 4 + (a.viewsCount || 0) * 1 + (a.commentsCount || 0) * 6 + (a.trending ? 15 : 0);
+        const scoreB = (b.likesCount || 0) * 4 + (b.viewsCount || 0) * 1 + (b.commentsCount || 0) * 6 + (b.trending ? 15 : 0);
+        return scoreB - scoreA;
+      });
   };
 
   return (

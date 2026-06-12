@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Menu, Sparkles, Heart, Wallet } from 'lucide-react';
+import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn, CATEGORIES } from '../lib/utils';
 import { ThemeToggle } from './ThemeToggle';
@@ -276,6 +276,31 @@ export function Navbar() {
 
                   </div>
                 </div>
+
+                {/* Sponsor direct link ad */}
+                <a 
+                  href="https://omg10.com/4/11136040" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block group relative p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/15 overflow-hidden hover:border-emerald-300 transition-all text-left"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
+                  <div className="relative z-10 space-y-2">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/15 border border-emerald-500/25 text-[8px] font-extrabold uppercase tracking-widest text-emerald-400">
+                      PARTNER AIRDROP
+                    </div>
+                    <h5 className="font-bold text-xs text-white group-hover:text-emerald-300 transition-colors">
+                      Claim $1,500 Reward & MMO Toolkits
+                    </h5>
+                    <p className="text-[10px] text-gray-400 font-medium leading-normal">
+                      Access verified direct-payment systems, complete monetization courses and premium digital toolsets now.
+                    </p>
+                    <div className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider pt-1 justify-between">
+                      <span>ACTIVATE PROTOCOL</span>
+                      <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </div>
+                </a>
                 
                 <div className="mt-auto pt-6">
                   <div className="p-5 rounded-2xl border border-white/5 bg-[#121216]">

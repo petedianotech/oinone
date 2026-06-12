@@ -232,6 +232,60 @@ export function Home() {
           </section>
         ) : (
           <>
+            {/* DYNAMIC TRENDING PORTS */}
+            {trending.length > 0 && (
+              <section className="space-y-8 pb-16 dark:border-b-0 border-b border-gray-200 dark:border-gray-800/80">
+                <div className="flex items-center gap-3">
+                  <Flame className="w-5 h-5 text-amber-500 animate-pulse" />
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-gray-905 dark:text-white uppercase tracking-wider">
+                    Trending Neural Acceleration
+                  </h2>
+                  <div className="h-[1px] flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent ml-4" />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {trending.slice(0, 4).map((post, idx) => (
+                    <Link
+                      key={`trending-${post.id}`}
+                      to={`/article/${post.id}`}
+                      className="group relative flex flex-col justify-between p-6 rounded-[2rem] bg-gray-50/50 hover:bg-white dark:bg-[#121216]/50 dark:hover:bg-[#121216]/95 border border-gray-150 dark:border-white/5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 text-left"
+                    >
+                      <div className="space-y-4">
+                        {/* Numeric rank badge paired with read time */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-3xl font-mono font-extrabold text-[#1f2937]/10 dark:text-white/10 group-hover:text-brand-cyan/20 transition-colors">
+                            0{idx + 1}
+                          </span>
+                          <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-brand-purple/80 bg-brand-purple/10 border border-brand-purple/20 px-2.5 py-1 rounded-full">
+                            {post.readTime} min read
+                          </span>
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-display font-black text-gray-950 dark:text-gray-100 group-hover:text-brand-purple transition-colors line-clamp-2 leading-snug">
+                            {post.title}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-2 mt-2 leading-relaxed">
+                            {post.excerpt}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Display metric badges inside container footer */}
+                      <div className="flex items-center gap-4 pt-5 mt-4 border-t border-gray-100 dark:border-white/5 text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400">
+                        <span className="flex items-center gap-1.5 hover:text-red-400 transition-colors">
+                          <ThumbsUp className="w-3.5 h-3.5 text-brand-purple" /> {post.likesCount || 0} Likes
+                        </span>
+                        <span className="flex items-center gap-1.5 hover:text-brand-cyan transition-colors">
+                          <Eye className="w-3.5 h-3.5 text-brand-cyan" /> {post.viewsCount || 0} Views
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* LATEST NEURAL LOGS (NOW PLACED AT THE VERY TOP) */}
             <section className="space-y-8 animate-fade-in" id="articles-feed">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-250 dark:border-gray-800">
@@ -281,9 +335,43 @@ export function Home() {
               {paginatedPosts.length > 0 ? (
                 <div className="space-y-12">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {paginatedPosts.map(post => (
-                      <ArticleCard key={post.id} post={post} variant="standard" />
-                    ))}
+                    {paginatedPosts.map((post, idx) => {
+                      if (idx === 2) {
+                        return (
+                          <React.Fragment key={`ad-wrapper-${post.id}`}>
+                            <ArticleCard post={post} variant="standard" />
+                            {/* Inline Grid Sponsor Card (Monetag Direct Link AD) */}
+                            <a 
+                              href="https://omg10.com/4/11136040"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group glass-panel border border-emerald-500/30 bg-[#121216]/60 rounded-[2rem] overflow-hidden hover-glass transition-all duration-500 hover:-translate-y-2 flex flex-col relative text-left"
+                            >
+                              <div className="h-48 relative overflow-hidden bg-gradient-to-br from-emerald-950/40 to-cyan-950/40">
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#121216]/80 via-transparent to-transparent z-10" />
+                                <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wider">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> SPONSOR AD
+                                </div>
+                                <div className="flex items-center justify-center h-full text-emerald-400 bg-gradient-to-br from-emerald-950/20 to-brand-blue/20">
+                                  <Zap className="w-16 h-16 animate-bounce" style={{ animationDuration: '3s' }} />
+                                </div>
+                              </div>
+                              <div className="p-6 flex-1 flex flex-col relative">
+                                <div className="absolute -top-5 right-6 z-20 bg-emerald-500 text-black font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 border border-emerald-500 flex items-center gap-1">
+                                  <Sparkles className="w-3.5 h-3.5 text-black" /> HOT OFFER
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-emerald-300 transition-colors">Digital Wealth Activation</h3>
+                                <p className="text-sm text-gray-400 leading-relaxed mb-6 font-medium flex-1">Securing direct high-payout income engines, verified advertising portals, and fast tracking MMORPG resources.</p>
+                                <div className="w-full flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 py-4 rounded-[1rem] text-xs font-bold uppercase tracking-widest transition-all duration-300">
+                                  Access Partner Vault <ExternalLink className="w-4 h-4 text-emerald-400" />
+                                </div>
+                              </div>
+                            </a>
+                          </React.Fragment>
+                        );
+                      }
+                      return <ArticleCard key={post.id} post={post} variant="standard" />;
+                    })}
                   </div>
 
                   {/* Load More Button */}

@@ -1,13 +1,37 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { 
+  initializeFirestore, 
+  getFirestore,
+  persistentLocalCache, 
+  persistentMultipleTabManager, 
+  doc, 
+  getDocFromServer 
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase app
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with Database ID from configuration
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore with robust local persistent cache for seamless offline resilience
+let dbInstance;
+try {
+  dbInstance = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  }, firebaseConfig.firestoreDatabaseId);
+} catch (cacheError) {
+  console.warn('[Firebase Cache Initialization]: Could not mount multi-tab persistent cache. Reverting to basic schema.', cacheError);
+  try {
+    dbInstance = initializeFirestore(app, {}, firebaseConfig.firestoreDatabaseId);
+  } catch (fallbackError) {
+    // If double initialized, fallback to standard getFirestore getter
+    dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = dbInstance;
 
 // Initialize Firebase Auth
 export const auth = getAuth();
@@ -71,11 +95,18 @@ async function testConnection() {
   try {
     // Testing path
     await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log('[Firebase Setup]: Connected to Firestore backend cloud servers successfully.');
   } catch (error: any) {
-    if (error && error.message && error.message.includes('offline')) {
-      console.warn('[Firebase Link Warning]: The client is offline.', error);
+    const isOffline = error && error.message && (
+      error.message.includes('offline') || 
+      error.message.includes('reach') || 
+      error.message.includes('unavailable') ||
+      error.message.includes('Connection failed')
+    );
+    if (isOffline) {
+      console.log('[Firebase Setup]: Running in robust Offline-first cached database mode safely.');
     } else {
-      console.log('[Firebase Setup]: Initialized database and authenticated connection safely.');
+      console.warn('[Firebase Connection Warning]: Unresolved status:', error);
     }
   }
 }

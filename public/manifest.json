@@ -9,14 +9,14 @@
   "description": "A premium all-in-one blog platform featuring Finance, Technology, AI, and Online Business. Written by Peter Damiano.",
   "icons": [
     {
-      "src": "/app_icon.png",
+      "src": "/oinone_blog_icon.jpg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "/app_icon.png",
+      "src": "/oinone_blog_icon.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
