@@ -176,7 +176,7 @@ export function Home() {
                     {matchedPosts.length > 0 ? (
                       <div className="space-y-2">
                         <div className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 px-2 pb-2 border-b border-gray-100 dark:border-gray-800">
-                          Neural Matches
+                          Search Results
                         </div>
                         {matchedPosts.map(post => (
                           <Link key={post.id} to={`/article/${post.id}`} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group text-left">
@@ -238,7 +238,7 @@ export function Home() {
                 <div className="flex items-center gap-3">
                   <Flame className="w-5 h-5 text-amber-500 animate-pulse" />
                   <h2 className="font-display text-2xl font-bold tracking-tight text-gray-905 dark:text-white uppercase tracking-wider">
-                    Trending Neural Acceleration
+                    Trending Articles
                   </h2>
                   <div className="h-[1px] flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent ml-4" />
                 </div>
@@ -286,15 +286,15 @@ export function Home() {
               </section>
             )}
 
-            {/* LATEST NEURAL LOGS (NOW PLACED AT THE VERY TOP) */}
+            {/* LATEST ARTICLES (NOW PLACED AT THE VERY TOP) */}
             <section className="space-y-8 animate-fade-in" id="articles-feed">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-250 dark:border-gray-800">
                 <div>
                   <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    {selectedCategory === 'all' ? 'Latest Neural Logs' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Logs`}
+                    {selectedCategory === 'all' ? 'Latest Articles' : `${categories.find(c => c.id === selectedCategory)?.name || selectedCategory} Articles`}
                   </h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {loading ? 'Analyzing database...' : `Found ${totalMatchingCount} certified operational logs`}
+                    {loading ? 'Loading...' : `Found ${totalMatchingCount} total articles`}
                   </p>
                 </div>
 
@@ -392,7 +392,7 @@ export function Home() {
                   <Sparkles className="w-12 h-12 text-gray-400 dark:text-gray-600 mb-6" />
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No Records Found</h3>
                   <p className="text-gray-500 dark:text-gray-400 max-w-sm">
-                    The neural database has no published entries for this specific category node.
+                    There are no written articles for this category yet.
                   </p>
                 </div>
               )}
@@ -443,7 +443,7 @@ export function Home() {
             {/* AI CATEGORY DISCOVERY (Replacing boring row) - MOVED TO THE BOTTOM */}
             <section className="animate-fade-in">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Knowledge Nodes</h2>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Browse Categories</h2>
                 <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-800 to-transparent mx-8 hidden md:block" />
               </div>
               

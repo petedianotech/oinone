@@ -112,7 +112,7 @@ export function Navbar() {
                 <Search className={cn("h-3.5 w-3.5 flex-shrink-0 transition-colors", isSearchFocused ? "text-brand-purple" : "text-gray-500")} />
                 <input
                   type="text"
-                  placeholder="Neural Search..."
+                  placeholder="Search articles..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}

@@ -108,7 +108,7 @@ export function ArticlePage() {
            <div className="flex items-center justify-center h-full">
              <div className="flex flex-col items-center gap-4">
                  <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
-                 <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Initializing Neural Link...</p>
+                 <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Loading Article...</p>
              </div>
            </div>
          </div>
@@ -330,7 +330,41 @@ export function ArticlePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white">
-      {/* Premium Neural Progress Bar */}
+      {/* Article SEO Rich Snippets JSON-LD */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BlogPosting",
+          "headline": post.title,
+          "description": post.excerpt,
+          "image": post.imageUrl ? [post.imageUrl] : [],
+          "datePublished": (() => {
+            try { return new Date(post.date).toISOString(); } catch { return new Date().toISOString(); }
+          })(),
+          "dateModified": (() => {
+            try { return new Date(post.date).toISOString(); } catch { return new Date().toISOString(); }
+          })(),
+          "author": [{
+            "@type": "Person",
+            "name": post.author?.name || "Peter Damiano",
+            "role": post.author?.role || "Developer & Writer"
+          }],
+          "publisher": {
+            "@type": "Organization",
+            "name": "Oinone",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://oinone.com/oinone_blog_icon.jpg"
+            }
+          },
+          "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": currentUrl
+          }
+        })}
+      </script>
+
+      {/* Progress Bar */}
       <motion.div
         className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-cyan to-brand-purple origin-left z-50 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
         style={{ scaleX }}
@@ -402,7 +436,7 @@ export function ArticlePage() {
                 </div>
                 <div className="flex items-center gap-2 mb-4 text-brand-purple">
                   <Sparkles className="w-5 h-5" />
-                  <span className="font-bold text-xs uppercase tracking-widest">Neural Summary</span>
+                  <span className="font-bold text-xs uppercase tracking-widest">Quick Summary</span>
                 </div>
                 <p className="text-sm text-gray-300 font-medium leading-relaxed">
                   {post.summary}
@@ -463,7 +497,7 @@ export function ArticlePage() {
                   <h4 className="font-bold text-sm text-white uppercase tracking-wider">Listen to Article</h4>
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
                     {isPlayingSpeech 
-                      ? (isPausedSpeech ? "Audio System Paused" : "Synthesizing Neural Narration...") 
+                      ? (isPausedSpeech ? "Audio System Paused" : "Reading Aloud...") 
                       : "Standard Browser Narration"}
                   </p>
                 </div>
@@ -655,7 +689,7 @@ export function ArticlePage() {
 
           {/* Reactions Interactivity */}
           <div className="mt-16 pt-10 border-t border-white/10">
-             <h3 className="font-display text-2xl font-bold mb-6">Neural feedback</h3>
+             <h3 className="font-display text-2xl font-bold mb-6">Comments</h3>
              <div className="flex flex-wrap gap-4">
                 <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReact('like')} className={cn("flex px-6 py-3 rounded-2xl border text-sm font-bold transition-all", reactions.like ? "bg-brand-blue/20 border-brand-blue/50 text-white" : "glass-panel hover-glass text-gray-400")} >
                   <ThumbsUp className={cn("h-5 w-5 mr-2", reactions.like ? "text-brand-blue" : "")} /> 👍 {getReactionCount('like')}
@@ -687,7 +721,7 @@ export function ArticlePage() {
               <div className="space-y-6 relative z-10">
                  <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Identity Handler</label>
-                   <input type="text" value={newCommentName} onChange={(e) => setNewCommentName(e.target.value)} placeholder="Anonymous Node" maxLength={80} className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-brand-purple transition-all" />
+                   <input type="text" value={newCommentName} onChange={(e) => setNewCommentName(e.target.value)} placeholder="Anonymous User" maxLength={80} className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-brand-purple transition-all" />
                  </div>
                  <div>
                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Data Output</label>

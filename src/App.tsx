@@ -8,17 +8,30 @@ import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { PWAPrompt } from './components/PWAPrompt';
 import { Home } from './pages/Home';
-import { CategoryPage } from './pages/CategoryPage';
-import { ArticlePage } from './pages/ArticlePage';
-import { About } from './pages/About';
-import { Privacy } from './pages/Privacy';
-import { Terms } from './pages/Terms';
-import { Disclaimer } from './pages/Disclaimer';
-import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { OffersVault } from './pages/OffersVault';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
+
+// Lazy load non-critical heavy routes for massive chunk speed gains
+const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
+const ArticlePage = lazy(() => import('./pages/ArticlePage').then(m => ({ default: m.ArticlePage })));
+const About = lazy(() => import('./pages/About').then(m => ({ default: m.About })));
+const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
+const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
+const Disclaimer = lazy(() => import('./pages/Disclaimer').then(m => ({ default: m.Disclaimer })));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const OffersVault = lazy(() => import('./pages/OffersVault').then(m => ({ default: m.OffersVault })));
+
+function SuspenseLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center bg-[#0a0a0c]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-brand-cyan/20 border-t-brand-cyan animate-spin" />
+        <span className="text-[10px] uppercase tracking-widest text-[#06b6d4]/60 font-mono">Loading...</span>
+      </div>
+    </div>
+  );
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -42,20 +55,22 @@ function AppContent() {
     <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white">
       {!isAdminPage && <Navbar />}
       <div className="flex-grow">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/vault" element={<OffersVault />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/privacy-policy" element={<Privacy />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms-of-service" element={<Terms />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/disclaimer" element={<Disclaimer />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/category/:categoryId" element={<CategoryPage />} />
-          <Route path="/:categoryId" element={<CategoryPage />} />
-          <Route path="/article/:articleId" element={<ArticlePage />} />
-        </Routes>
+        <Suspense fallback={<SuspenseLoader />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/vault" element={<OffersVault />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/privacy-policy" element={<Privacy />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms-of-service" element={<Terms />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/disclaimer" element={<Disclaimer />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/category/:categoryId" element={<CategoryPage />} />
+            <Route path="/:categoryId" element={<CategoryPage />} />
+            <Route path="/article/:articleId" element={<ArticlePage />} />
+          </Routes>
+        </Suspense>
       </div>
       {!isAdminPage && <Footer />}
       <PWAPrompt />

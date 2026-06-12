@@ -1271,9 +1271,9 @@ export function AdminDashboard() {
               <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50 dark:bg-blue-500/5 blur-3xl pointer-events-none rounded-full" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-1 rounded-full">Engineering & Software Nodes</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-1 rounded-full">Engineering & Software</span>
                   <h3 className="text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-3">Technology Hub</h3>
-                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Govern hardware alignments, custom web layouts, and deep programmatic reviews.</p>
+                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Manage all technology and software articles.</p>
                 </div>
                 <button 
                   onClick={() => {
@@ -1282,7 +1282,7 @@ export function AdminDashboard() {
                   }}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg hover:shadow-blue-600/10 active:scale-95 cursor-pointer"
                 >
-                  <Cpu className="w-4 h-4" /> Trigger Tech Generation
+                  <Cpu className="w-4 h-4" /> Create Tech Article
                 </button>
               </div>
 
@@ -1347,9 +1347,9 @@ export function AdminDashboard() {
               <div className="absolute top-0 right-0 w-80 h-80 bg-purple-50 dark:bg-purple-500/5 blur-3xl pointer-events-none rounded-full" />
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 px-3 py-1 rounded-full">Gemini Intelligent Agents & Cover Art Protocols</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 px-3 py-1 rounded-full">AI Settings & Blog Covers</span>
                   <h3 className="text-2xl font-display font-extrabold text-gray-900 dark:text-white mt-3">AI Systems Control</h3>
-                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Calibrate generation triggers, set creative limits, and supervise autonomous workflows.</p>
+                  <p className="text-gray-500 dark:text-indigo-200/60 mt-1 text-sm">Adjust AI writing settings and supervise articles.</p>
                 </div>
                 <button 
                   onClick={() => {
@@ -1358,7 +1358,7 @@ export function AdminDashboard() {
                   }}
                   className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-lg shadow-purple-600/20 active:scale-95 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4" /> Launch AI Studio
+                  <Sparkles className="w-4 h-4" /> Create AI Article
                 </button>
               </div>
 

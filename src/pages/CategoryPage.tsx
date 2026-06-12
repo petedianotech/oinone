@@ -21,7 +21,7 @@ export function CategoryPage() {
            <div className="flex items-center justify-center h-full">
              <div className="flex flex-col items-center gap-4">
                 <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
-                <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Syncing Category Nodes...</p>
+                <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Loading Category...</p>
              </div>
            </div>
         </div>
@@ -59,7 +59,7 @@ export function CategoryPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-brand-purple/5 to-brand-cyan/5 blur-3xl rounded-full" />
           <div className="relative z-10 text-center max-w-3xl mx-auto">
             <span className="inline-block px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-brand-cyan backdrop-blur-md mb-6">
-              {category.name} Data Stream
+              {category.name} Articles
             </span>
             <h1 className="font-display text-5xl md:text-7xl font-black text-white mb-6 tracking-tight leading-tight">
               {category.name}
@@ -74,7 +74,7 @@ export function CategoryPage() {
         {posts.length === 0 ? (
           <div className="text-center py-32 glass-panel rounded-[2rem] border border-white/5">
             <Sparkles className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-display font-bold text-gray-400">No nodes found in this sector yet.</h3>
+            <h3 className="text-2xl font-display font-bold text-gray-400">There are no articles in this category yet.</h3>
           </div>
         ) : (
           <div className="space-y-16">
