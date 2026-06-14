@@ -1,6 +1,6 @@
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
-import { CATEGORIES, cn } from '../lib/utils';
+import { CATEGORIES, cn, optimizeImageUrl } from '../lib/utils';
 import { Clock, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles, Bookmark, Share2, Play, Pause, Square, Volume2, ExternalLink } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { ShareButtons } from '../components/ShareButtons';
@@ -373,7 +373,7 @@ export function ArticlePage() {
       {/* Massive Hero Setup */}
       <div className="relative pt-24 min-h-[85vh] flex flex-col items-center justify-center isolation-auto border-b border-white/5">
         <div className="absolute inset-0 z-0">
-          <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover opacity-30" />
+          <img src={optimizeImageUrl(post.imageUrl, 1200)} alt={post.title} className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-transparent to-[#0a0a0c]" />
         </div>
@@ -629,7 +629,7 @@ export function ArticlePage() {
                   renderedElements.push(
                     <div key="body-img-1" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
                       <img 
-                        src={bodyImages[0]} 
+                        src={optimizeImageUrl(bodyImages[0], 800)} 
                         alt="Article insight illustration" 
                         loading="lazy"
                         referrerPolicy="no-referrer"
@@ -645,7 +645,7 @@ export function ArticlePage() {
                   renderedElements.push(
                     <div key="body-img-2" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
                       <img 
-                        src={bodyImages[1]} 
+                        src={optimizeImageUrl(bodyImages[1], 800)} 
                         alt="Deep dive analysis graphic" 
                         loading="lazy"
                         referrerPolicy="no-referrer"
@@ -664,7 +664,7 @@ export function ArticlePage() {
               if (bodyImages.length > 0 && minIndexForFirst >= totalItems) {
                 renderedElements.push(
                   <div key="body-img-1-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                    <img src={bodyImages[0]} alt="Article insight illustration" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
+                    <img src={optimizeImageUrl(bodyImages[0], 800)} alt="Article insight illustration" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
                   </div>
                 );
@@ -672,7 +672,7 @@ export function ArticlePage() {
               if (bodyImages.length > 1 && minIndexForSecond >= totalItems) {
                 renderedElements.push(
                   <div key="body-img-2-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                    <img src={bodyImages[1]} alt="Deep dive analysis graphic" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
+                    <img src={optimizeImageUrl(bodyImages[1], 800)} alt="Deep dive analysis graphic" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
                   </div>
                 );

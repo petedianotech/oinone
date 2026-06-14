@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Post } from '../types';
-import { CATEGORIES, cn } from '../lib/utils';
+import { CATEGORIES, cn, optimizeImageUrl } from '../lib/utils';
 import { Clock, Eye, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
@@ -24,7 +24,7 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
         <div className="relative h-64 sm:h-72 overflow-hidden">
           <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10" />
           <img 
-            src={post.imageUrl} 
+            src={optimizeImageUrl(post.imageUrl, 800)} 
             alt={post.title} 
             className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
           />
@@ -73,7 +73,7 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
       <Link to={`/article/${post.id}`} className={cn("group flex gap-4 items-start p-3 rounded-2xl hover:bg-white/5 transition-colors", className)}>
         <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-[#121216]">
            <img 
-            src={post.imageUrl} 
+            src={optimizeImageUrl(post.imageUrl, 200)} 
             alt={post.title} 
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-80 group-hover:opacity-100"
           />
@@ -100,7 +100,7 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
     <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className={cn("group flex flex-col h-full bg-white dark:bg-[#121216]/50 rounded-[2rem] overflow-hidden glass-panel hover-glass transition-all relative border-t border-gray-100 dark:border-white/5", className)}>
       <Link to={`/article/${post.id}`} className="block relative h-56 mx-2 mt-2 overflow-hidden rounded-[1.5rem]">
         <img 
-          src={post.imageUrl} 
+          src={optimizeImageUrl(post.imageUrl, 600)} 
           alt={post.title} 
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90 group-hover:opacity-100"

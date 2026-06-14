@@ -15,6 +15,7 @@ import { SEOAnalyzer } from '../../components/SEOAnalyzer';
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'ads-manager' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -103,9 +104,50 @@ export function AdminDashboard() {
     let unsubscribeAds: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
-      if (u && u.email !== 'petedianotech@gmail.com') {
-        await signOut(auth);
+      if (u) {
+        try {
+          const res = await fetch('/api/admin/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: u.email }),
+          });
+          const data = await res.json();
+          if (!data.isAdmin) {
+            await signOut(auth);
+            setUser(null);
+            setIsAdmin(false);
+            if (unsubscribeOffers) {
+              unsubscribeOffers();
+              unsubscribeOffers = null;
+            }
+            if (unsubscribeAds) {
+              unsubscribeAds();
+              unsubscribeAds = null;
+            }
+          } else {
+            setUser(u);
+            setIsAdmin(true);
+            fetchAdminData();
+            if (!unsubscribeOffers) {
+              unsubscribeOffers = subscribeToOffers(setOffers, (err) => {
+                console.error('[AdminDashboard] Offers subscription failed:', err);
+              });
+            }
+            if (!unsubscribeAds) {
+              unsubscribeAds = subscribeToAds(setAds, (err) => {
+                console.error('[AdminDashboard] Ads subscription failed:', err);
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Admin verification failed', e);
+          await signOut(auth);
+          setUser(null);
+          setIsAdmin(false);
+        }
+      } else {
         setUser(null);
+        setIsAdmin(false);
         if (unsubscribeOffers) {
           unsubscribeOffers();
           unsubscribeOffers = null;
@@ -113,21 +155,6 @@ export function AdminDashboard() {
         if (unsubscribeAds) {
           unsubscribeAds();
           unsubscribeAds = null;
-        }
-      } else {
-        setUser(u);
-        if (u && u.email === 'petedianotech@gmail.com') {
-          fetchAdminData();
-          if (!unsubscribeOffers) {
-            unsubscribeOffers = subscribeToOffers(setOffers, (err) => {
-              console.error('[AdminDashboard] Offers subscription failed:', err);
-            });
-          }
-          if (!unsubscribeAds) {
-            unsubscribeAds = subscribeToAds(setAds, (err) => {
-              console.error('[AdminDashboard] Ads subscription failed:', err);
-            });
-          }
         }
       }
       setLoading(false);
@@ -242,10 +269,19 @@ export function AdminDashboard() {
         prompt: 'select_account'
       });
       const result = await signInWithPopup(auth, provider);
-      if (result.user.email !== 'petedianotech@gmail.com') {
+      const res = await fetch('/api/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: result.user.email }),
+      });
+      const data = await res.json();
+      if (!data.isAdmin) {
         await signOut(auth);
         setUser(null);
-        alert('Unauthorized login attempt. Access is restricted exclusively to petedianotech@gmail.com.');
+        setIsAdmin(false);
+        alert('Unauthorized login attempt. Access is restricted.');
+      } else {
+        setIsAdmin(true);
       }
     } catch (e) {
       console.error('Login failed', e);
@@ -500,26 +536,81 @@ export function AdminDashboard() {
   };
 
   if (loading) {
-     return <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="w-12 h-12 rounded-full border-t-2 border-indigo-600 animate-spin"></div>
-     </div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0c] text-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 rounded-full border-2 border-brand-cyan/20 border-t-brand-cyan animate-spin" />
+          <span className="text-[10px] uppercase tracking-widest text-[#06b6d4]/60 font-mono">Verifying Session...</span>
+        </div>
+      </div>
+    );
   }
 
-  if (!user || user.email !== 'petedianotech@gmail.com') {
+  if (!user || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 p-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-xl border border-gray-100 dark:border-gray-800 text-center">
-          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6 text-indigo-600 dark:text-indigo-400">
-            <Lock className="w-8 h-8" />
+      <div className="relative min-h-screen flex items-center justify-center bg-[#0a0a0c] text-white p-6 overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-brand-purple/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-brand-cyan/10 rounded-full blur-[120px] pointer-events-none" />
+
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="relative max-w-md w-full bg-[#111115]/80 backdrop-blur-xl rounded-[2rem] p-10 shadow-2xl border border-white/5 text-center z-10"
+        >
+          {/* Lock Icon */}
+          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-white/10 text-brand-cyan">
+            <Lock className="w-6 h-6" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Admin Access</h1>
-          <p className="text-gray-500 dark:text-gray-400 mb-8 text-sm">Please sign in with your authorized admin account to access the dashboard.</p>
-          <button onClick={handleLogin} className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-medium transition-colors cursor-pointer">
-            Sign In with Google
+
+          <h1 className="font-display text-3xl font-black mb-3 tracking-tight">
+            Terminal Access
+          </h1>
+          <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+            Authentication is restricted to the pre-configured editor credentials.
+          </p>
+
+          {/* Configured account display */}
+          <div className="mb-8 p-4 bg-white/5 rounded-2xl border border-white/5 text-left space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-brand-purple">Authorized Editor Node</span>
+            <p className="text-sm font-medium text-white font-mono break-all">petedianotech@gmail.com</p>
+          </div>
+
+          {/* Direct Google Action Button */}
+          <button 
+            onClick={handleLogin} 
+            className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-200 text-[#0a0a0c] p-3.5 rounded-xl font-semibold transition-all shadow-lg hover:scale-[1.02] cursor-pointer"
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#EA4335"
+                d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.86-3.577-7.86-8s3.53-8 7.86-8c2.46 0 4.105 1.025 5.047 1.926l3.256-3.133C18.29 1.137 15.54 0 12.24 0 5.48 0 0 5.37 0 12s5.48 12 12.24 12c7.06 0 11.75-4.82 11.75-11.72 0-.79-.08-1.4-.2-1.995H12.24z"
+              />
+            </svg>
+            <span className="text-sm">Sign In with Google</span>
           </button>
-          {user && user.email !== 'petedianotech@gmail.com' && (
-            <p className="text-rose-500 text-xs mt-4">Account {user.email} is not authorized.</p>
+
+          {/* Access denied toast/notice */}
+          {user && !isAdmin && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mt-6 p-4 bg-rose-500/15 border border-rose-500/30 rounded-xl text-rose-300 text-xs text-left leading-relaxed animate-pulse"
+            >
+              Access Denied. Account <strong className="font-semibold">{user.email}</strong> is not configured as an administrator.
+            </motion.div>
           )}
+
+          {/* Return Home */}
+          <div className="mt-8">
+            <Link 
+              to="/" 
+              className="text-xs text-gray-400 hover:text-white transition-colors tracking-wide underline underline-offset-4"
+            >
+              Return back to Oinone
+            </Link>
+          </div>
         </motion.div>
       </div>
     );

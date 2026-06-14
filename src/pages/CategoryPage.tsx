@@ -3,6 +3,7 @@ import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn } from '../lib/utils';
 import { CategoryId } from '../types';
 import { ArticleCard } from '../components/ArticleCard';
+import { ArticleFeedSkeleton } from '../components/ArticleFeedSkeleton';
 import { motion } from 'motion/react';
 import { Sparkles, ArrowLeft } from 'lucide-react';
 
@@ -15,18 +16,7 @@ export function CategoryPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen pt-24 bg-[#0a0a0c]">
-        <div className="max-w-7xl mx-auto px-4 h-[60vh] rounded-3xl bg-[#121216] animate-pulse">
-           <div className="flex items-center justify-center h-full">
-             <div className="flex flex-col items-center gap-4">
-                <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
-                <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Loading Category...</p>
-             </div>
-           </div>
-        </div>
-      </div>
-    );
+    return <ArticleFeedSkeleton layout="category" />;
   }
 
   const category = CATEGORIES[categoryId as CategoryId];

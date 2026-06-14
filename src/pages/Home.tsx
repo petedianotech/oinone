@@ -4,10 +4,12 @@ import { useBlog } from '../lib/BlogContext';
 import { subscribeToActiveOffers, incrementOfferViews, incrementOfferClicks } from '../lib/offerService';
 import { subscribeToAds } from '../lib/adsService';
 import { Offer, Ad } from '../types';
-import { ArticleCard, ArticleSkeleton } from '../components/ArticleCard';
+import { ArticleCard } from '../components/ArticleCard';
+import { ArticleFeedSkeleton } from '../components/ArticleFeedSkeleton';
 import { Flame, Coins, Cpu, Sparkles, ArrowRight, ExternalLink, Search, Clock, Compass, Zap, Shield, SlidersHorizontal, Calendar, Eye, ThumbsUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
+import { optimizeImageUrl } from '../lib/utils';
 
 export function Home() {
   const { posts, loading, getFeaturedPosts, getTrendingPosts } = useBlog();
@@ -193,7 +195,7 @@ export function Home() {
                         </div>
                         {matchedPosts.map(post => (
                           <Link key={post.id} to={`/article/${post.id}`} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group text-left">
-                            <img src={post.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                            <img src={optimizeImageUrl(post.imageUrl, 100)} alt="" className="w-12 h-12 rounded-xl object-cover" />
                             <div>
                               <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-brand-purple transition-colors line-clamp-1">{post.title}</h4>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
@@ -219,20 +221,7 @@ export function Home() {
 
         {/* Content Section - Skeleton or Real data */}
         {loading ? (
-          <section className="space-y-32">
-            {/* Skeleton Hero Featured */}
-            <div className="h-[650px] relative rounded-[2.5rem] overflow-hidden bg-gray-100 dark:bg-[#121216] animate-pulse">
-               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-            </div>
-            <div className="space-y-8">
-               <div className="w-48 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 animate-pulse" />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <ArticleSkeleton key={i} variant="standard" />
-                ))}
-              </div>
-            </div>
-          </section>
+          <ArticleFeedSkeleton layout="home" />
         ) : (
           <>
             {/* DYNAMIC TRENDING PORTS */}
@@ -308,7 +297,7 @@ export function Home() {
                       <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 z-10 w-full">
                         {ad.imageUrl && (
                           <div className="shrink-0 w-full md:w-64 h-40 md:h-32 rounded-2xl overflow-hidden shadow-lg border border-white/20 dark:border-white/5 relative group-hover:scale-105 transition-transform duration-500">
-                             <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
+                             <img src={optimizeImageUrl(ad.imageUrl, 500)} alt={ad.title} className="w-full h-full object-cover" />
                              <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded border border-white/10 text-[9px] font-bold text-white uppercase tracking-widest">
                                Sponsored
                              </div>
@@ -460,7 +449,7 @@ export function Home() {
                     {featuredOffer.imageUrl && (
                       <div className="w-full md:w-64 h-40 rounded-[2rem] overflow-hidden shadow-2xl shrink-0">
                         <img 
-                          src={featuredOffer.imageUrl} 
+                          src={optimizeImageUrl(featuredOffer.imageUrl, 500)} 
                           alt={featuredOffer.title} 
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[1.5s] ease-out" 
                           loading="lazy"

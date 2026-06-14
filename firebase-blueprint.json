@@ -70,6 +70,26 @@
         "createdAt": { "type": "integer" }
       },
       "required": ["id", "title", "description", "linkUrl", "status", "createdAt"]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "An affiliate campaign or CPA marketing offer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "provider": { "type": "string" },
+        "payout": { "type": "string" },
+        "badgeText": { "type": "string" },
+        "clicksCount": { "type": "integer" },
+        "viewsCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "paused"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "title", "description", "url", "imageUrl", "provider", "payout", "badgeText", "clicksCount", "viewsCount", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -92,6 +112,10 @@
     "ads/{adId}": {
       "schema": "Ad",
       "description": "Native sponsored advertisement banners managed by the admin"
+    },
+    "offers/{offerId}": {
+      "schema": "Offer",
+      "description": "Affiliate CPA campaigns managed by the admin"
     }
   }
 }

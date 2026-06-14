@@ -7,10 +7,12 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { PWAPrompt } from './components/PWAPrompt';
+import { OfflineNotification } from './components/OfflineNotification';
 import { Home } from './pages/Home';
 import { useEffect, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy load non-critical heavy routes for massive chunk speed gains
 const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
@@ -55,25 +57,28 @@ function AppContent() {
     <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white">
       {!isAdminPage && <Navbar />}
       <div className="flex-grow">
-        <Suspense fallback={<SuspenseLoader />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/vault" element={<OffersVault />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/privacy-policy" element={<Privacy />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms-of-service" element={<Terms />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/disclaimer" element={<Disclaimer />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/category/:categoryId" element={<CategoryPage />} />
-            <Route path="/:categoryId" element={<CategoryPage />} />
-            <Route path="/article/:articleId" element={<ArticlePage />} />
-          </Routes>
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<SuspenseLoader />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/vault" element={<OffersVault />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/privacy-policy" element={<Privacy />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms-of-service" element={<Terms />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/disclaimer" element={<Disclaimer />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/category/:categoryId" element={<CategoryPage />} />
+              <Route path="/:categoryId" element={<CategoryPage />} />
+              <Route path="/article/:articleId" element={<ArticlePage />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </div>
       {!isAdminPage && <Footer />}
       <PWAPrompt />
+      <OfflineNotification />
     </div>
   );
 }

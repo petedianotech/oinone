@@ -15,3 +15,35 @@ export const CATEGORIES = {
 export function getCategory(id: string) {
   return CATEGORIES[id as keyof typeof CATEGORIES] || CATEGORIES.technology;
 }
+
+export function optimizeImageUrl(url: string | undefined, width = 800): string {
+  if (!url) return '';
+  
+  // 1. Unsplash optimization
+  if (url.includes('images.unsplash.com')) {
+    try {
+      const parsedUrl = new URL(url);
+      parsedUrl.searchParams.set('auto', 'format');
+      parsedUrl.searchParams.set('q', '80');
+      parsedUrl.searchParams.set('w', width.toString());
+      parsedUrl.searchParams.set('fit', 'crop');
+      return parsedUrl.toString();
+    } catch (e) {
+      if (url.includes('?')) {
+        return `${url}&auto=format&q=80&w=${width}&fit=crop`;
+      }
+      return `${url}?auto=format&q=80&w=${width}&fit=crop`;
+    }
+  }
+  
+  // 2. Cloudinary optimization
+  if (url.includes('res.cloudinary.com')) {
+    if (url.includes('/upload/')) {
+      return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width}/`);
+    }
+  }
+
+  // 3. Fallback to original URL
+  return url;
+}
+

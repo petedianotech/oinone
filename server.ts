@@ -159,6 +159,14 @@ const STOCK_GALLERY: Record<string, string[]> = {
   ]
 };
 
+// Admin Verification Endpoint
+app.post("/api/admin/verify", (req, res) => {
+  const { email } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL || "petedianotech@gmail.com";
+  const isValid = email && email.toLowerCase() === adminEmail.toLowerCase();
+  res.json({ isAdmin: isValid });
+});
+
 // AI Content Generation Endpoint
 app.post("/api/ai/generate-blog", async (req, res) => {
   try {
@@ -342,6 +350,133 @@ SUMMARY: [your simple English summary]`;
   }
 });
 
+// SEO & Open Graph dynamic metadata extractor
+async function getMetadataForRoute(reqUrl: string): Promise<{ title: string; description: string; url: string; imageUrl: string }> {
+  const host = "https://oinone.co"; // Canonical production domain
+  const canonicalUrl = `${host}${reqUrl}`;
+  
+  const defaultMeta = {
+    title: "Oinone - Finance, Tech, AI & Business by Peter Damiano",
+    description: "Discover premium blog posts and deep-dives on Finance, Technology, AI, and Online Business compiled by Peter Damiano.",
+    url: canonicalUrl,
+    imageUrl: `${host}/oinone_blog_icon.jpg`
+  };
+
+  try {
+    // Match /article/:postId
+    const articleMatch = reqUrl.match(/^\/article\/([a-zA-Z0-9_\-]+)/);
+    if (articleMatch) {
+      const postId = articleMatch[1];
+      const projectId = "oin-one";
+      const databaseId = "ai-studio-ac2d3137-06fd-4d06-b18c-691ce92bd1ef";
+      
+      const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/articles/${postId}`;
+      
+      // Use short timeout to maintain lightning-fast first-byte delivery
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+      const response = await fetch(firestoreUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const doc = await response.json();
+        const fields = doc.fields || {};
+        
+        const title = fields.title?.stringValue || defaultMeta.title;
+        const excerpt = fields.excerpt?.stringValue || defaultMeta.description;
+        const imageUrl = fields.imageUrl?.stringValue || defaultMeta.imageUrl;
+
+        return {
+          title: `${title} | Oinone`,
+          description: excerpt,
+          url: canonicalUrl,
+          imageUrl: imageUrl
+        };
+      }
+    }
+    
+    // Resolve static pages with detailed thematic metadata
+    const cleanUrl = reqUrl.split("?")[0];
+    if (cleanUrl === "/" || cleanUrl === "/home" || cleanUrl === "") {
+      return {
+        title: "Oinone - Premium Tech, Finance & Business Insights",
+        description: "Stay ahead of the curve with deeply-researched analyses and insights on technologies, financial sectors, online businesses, and AI systems created by Peter Damiano.",
+        url: canonicalUrl,
+        imageUrl: `${host}/oinone_blog_icon.jpg`
+      };
+    } else if (cleanUrl === "/offers" || cleanUrl === "/offers-vault") {
+      return {
+        title: "Offers Vault - High-Tier Affiliate CPA Campaigns | Oinone",
+        description: "Explore highly-vetted premium business tools, financial campaigns, and dynamic online monetization systems curated for performance.",
+        url: canonicalUrl,
+        imageUrl: `${host}/oinone_blog_icon.jpg`
+      };
+    } else if (cleanUrl === "/about") {
+      return {
+        title: "About Peter Damiano & Oinone - AI-Powered Professional Journal",
+        description: "Learn more about the vision behind Oinone. Multi-faceted journalism exploring high-growth sectors, technology integration, and automated content generation.",
+        url: canonicalUrl,
+        imageUrl: `${host}/oinone_blog_icon.jpg`
+      };
+    } else if (cleanUrl === "/admin") {
+      return {
+        title: "Admin Dashboard - Content & Asset Operations | Oinone",
+        description: "Secure management panel for drafting articles, configuring advertisements, and monitoring affiliate campaigns.",
+        url: canonicalUrl,
+        imageUrl: `${host}/oinone_blog_icon.jpg`
+      };
+    }
+  } catch (err) {
+    console.warn(`[SEO Middleware] Failed to resolve metadata for "${reqUrl}":`, err);
+  }
+
+  return defaultMeta;
+}
+
+// Helper to inject HTML safe Open Graph + Twitter Meta Tags
+function injectMetaTags(
+  template: string,
+  metadata: { title: string; description: string; url: string; imageUrl: string }
+): string {
+  const { title, description, url, imageUrl } = metadata;
+  
+  const escapeHtml = (str: string) => {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
+  const escapedTitle = escapeHtml(title);
+  const escapedDescription = escapeHtml(description);
+  const escapedUrl = escapeHtml(url);
+  const escapedImageUrl = escapeHtml(imageUrl);
+
+  let result = template;
+
+  // Replace primary page title and description
+  result = result.replace(/<title>.*?<\/title>/gi, `<title>${escapedTitle}</title>`);
+  result = result.replace(/<meta name="title" content=".*?"\s*\/?>/gi, `<meta name="title" content="${escapedTitle}" />`);
+  result = result.replace(/<meta name="description" content=".*?"\s*\/?>/gi, `<meta name="description" content="${escapedDescription}" />`);
+
+  // Replace Open Graph metadata
+  result = result.replace(/<meta property="og:url" content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${escapedUrl}" />`);
+  result = result.replace(/<meta property="og:title" content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${escapedTitle}" />`);
+  result = result.replace(/<meta property="og:description" content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${escapedDescription}" />`);
+  result = result.replace(/<meta property="og:image" content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${escapedImageUrl}" />`);
+
+  // Replace Twitter metadata
+  result = result.replace(/<meta property="twitter:url" content=".*?"\s*\/?>/gi, `<meta property="twitter:url" content="${escapedUrl}" />`);
+  result = result.replace(/<meta property="twitter:title" content=".*?"\s*\/?>/gi, `<meta property="twitter:title" content="${escapedTitle}" />`);
+  result = result.replace(/<meta property="twitter:description" content=".*?"\s*\/?>/gi, `<meta property="twitter:description" content="${escapedDescription}" />`);
+  result = result.replace(/<meta property="twitter:image" content=".*?"\s*\/?>/gi, `<meta property="twitter:image" content="${escapedImageUrl}" />`);
+
+  return result;
+}
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -362,6 +497,11 @@ async function startServer() {
           "utf-8"
         );
         template = await vite.transformIndexHtml(req.originalUrl, template);
+        
+        // Dynamically inject high-fidelity SEO metadata
+        const meta = await getMetadataForRoute(req.originalUrl);
+        template = injectMetaTags(template, meta);
+
         res.status(200).set({ "Content-Type": "text/html" }).end(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
@@ -370,9 +510,42 @@ async function startServer() {
     });
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    
+    // Serve static assets with strict defensive caching headers
+    app.use(express.static(distPath, {
+      maxAge: "1y",
+      immutable: true,
+      setHeaders: (res, filePath) => {
+        // Enforce re-validation on index.html, service worker, and app config manifests
+        if (filePath.endsWith(".html") || filePath.includes("sw.js") || filePath.endsWith("manifest.json")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+        } else {
+          // JS, CSS, Fonts, Icons assets are highly secure with long-term immutable caching
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      }
+    }));
+
+    app.get("*", async (req, res) => {
+      // Set short-lived caching on HTML fallback to prevent client code staleness
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      
+      try {
+        let template = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
+        
+        // Dynamically inject high-fidelity SEO metadata
+        const meta = await getMetadataForRoute(req.originalUrl);
+        template = injectMetaTags(template, meta);
+
+        res.status(200).set({ "Content-Type": "text/html" }).send(template);
+      } catch (err) {
+        console.error("[SEO Middleware Production Error]", err);
+        res.sendFile(path.join(distPath, "index.html"));
+      }
     });
   }
 

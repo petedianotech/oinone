@@ -22,7 +22,37 @@ service cloud.firestore {
 
     function isBlogAdmin() {
       return request.auth != null && 
-             request.auth.token.email == "petedianotech@gmail.com";
+             (request.auth.token.email == "petedianotech@gmail.com" || 
+              request.auth.token.admin == true);
+    }
+
+    function isValidOffer(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'url', 'imageUrl', 'provider', 'payout', 'badgeText', 'clicksCount', 'viewsCount', 'status', 'createdAt']) &&
+             data.keys().size() == 12 &&
+             data.id is string && data.id.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.url is string && data.url.size() <= 1000 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1000 &&
+             data.provider is string && data.provider.size() <= 100 &&
+             data.payout is string && data.payout.size() <= 100 &&
+             data.badgeText is string && data.badgeText.size() <= 100 &&
+             data.clicksCount is int && data.clicksCount >= 0 &&
+             data.viewsCount is int && data.viewsCount >= 0 &&
+             (data.status == 'active' || data.status == 'paused') &&
+             data.createdAt is int;
+    }
+
+    function isValidAd(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'imageUrl', 'linkUrl', 'status', 'createdAt']) &&
+             data.keys().size() == 7 &&
+             data.id is string && data.id.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.imageUrl is string && data.imageUrl.size() <= 1000 &&
+             data.linkUrl is string && data.linkUrl.size() <= 1000 &&
+             (data.status == 'active' || data.status == 'inactive') &&
+             data.createdAt is int;
     }
 
     function isValidPost(data) {
@@ -120,17 +150,20 @@ service cloud.firestore {
     // 5. Offers / CPA Campaigns Collection rules
     match /offers/{offerId} {
       allow read: if true;
-      allow create: if isBlogAdmin();
-      allow update: if isBlogAdmin() || (
+      allow create: if isBlogAdmin() && isValidId(offerId) && isValidOffer(incoming());
+      allow update: if isValidId(offerId) && (
+        (isBlogAdmin() && isValidOffer(incoming())) ||
         incoming().diff(existing()).affectedKeys().hasOnly(['clicksCount', 'viewsCount'])
       );
-      allow delete: if isBlogAdmin();
+      allow delete: if isValidId(offerId) && isBlogAdmin();
     }
 
     // 6. Ads Manager Collection rules
     match /ads/{adId} {
       allow read: if true;
-      allow create, update, delete: if isBlogAdmin();
+      allow create: if isBlogAdmin() && isValidId(adId) && isValidAd(incoming());
+      allow update: if isBlogAdmin() && isValidId(adId) && isValidAd(incoming());
+      allow delete: if isBlogAdmin() && isValidId(adId);
     }
   }
 }
