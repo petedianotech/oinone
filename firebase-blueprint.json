@@ -55,6 +55,21 @@
         "userId": { "type": "string" },
         "likesCount": { "type": "integer" }
       }
+    },
+    "Ad": {
+      "title": "Ad",
+      "description": "A native banner ad for publishers and traffic monetization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "linkUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "title", "description", "linkUrl", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -73,6 +88,10 @@
     "subscribers/{email}": {
       "schema": "Subscriber",
       "description": "Stores digital newsletter subscription details"
+    },
+    "ads/{adId}": {
+      "schema": "Ad",
+      "description": "Native sponsored advertisement banners managed by the admin"
     }
   }
 }
