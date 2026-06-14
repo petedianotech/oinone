@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { subscribeToActiveOffers, incrementOfferViews, incrementOfferClicks } from '../lib/offerService';
 import { Offer } from '../types';
 import { motion } from 'motion/react';
@@ -7,6 +7,7 @@ import { ExternalLink, Flame, ShieldCheck, Sparkles, TrendingUp } from 'lucide-r
 export function OffersVault() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const incrementedOffersRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubscribe = subscribeToActiveOffers((fetchedOffers) => {
@@ -14,7 +15,10 @@ export function OffersVault() {
       setLoading(false);
       
       fetchedOffers.forEach(o => {
-        incrementOfferViews(o.id).catch(console.error);
+        if (!incrementedOffersRef.current.has(o.id)) {
+          incrementedOffersRef.current.add(o.id);
+          incrementOfferViews(o.id).catch(console.error);
+        }
       });
     }, (err) => {
       console.error('[OffersVault] Subscription failed:', err);

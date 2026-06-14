@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { subscribeToActiveOffers, incrementOfferViews, incrementOfferClicks } from '../lib/offerService';
@@ -21,6 +21,7 @@ export function Home() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'views' | 'likes'>('newest');
   const [visibleCount, setVisibleCount] = useState<number>(6);
   const navigate = useNavigate();
+  const incrementedOfferRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setVisibleCount(6);
@@ -29,8 +30,12 @@ export function Home() {
   useEffect(() => {
     const unsubscribeOffers = subscribeToActiveOffers((offers) => {
       if (offers.length > 0) {
-        setFeaturedOffer(offers[0]);
-        incrementOfferViews(offers[0].id).catch(console.error);
+        const topOffer = offers[0];
+        setFeaturedOffer(topOffer);
+        if (!incrementedOfferRef.current.has(topOffer.id)) {
+          incrementedOfferRef.current.add(topOffer.id);
+          incrementOfferViews(topOffer.id).catch(console.error);
+        }
       } else {
         setFeaturedOffer(null);
       }

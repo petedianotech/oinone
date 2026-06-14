@@ -1612,17 +1612,23 @@ export function AdminDashboard() {
                 <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
                   <p className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold">Total Sector Views</p>
                   <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
-                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').reduce((acc, curr) => acc + (curr.viewsCount || 0), 0) + 12840}
+                    {posts.filter(p => p.categoryId === 'finance' || p.categoryId === 'mmo').reduce((acc, curr) => acc + (curr.viewsCount || 0), 0)}
                   </p>
                   <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
-                    <TrendingUp className="w-3.5 h-3.5" /> +14.2% interest this week
+                    <TrendingUp className="w-3.5 h-3.5" /> Real-time active database views
                   </p>
                 </div>
 
                 <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
                   <p className="text-[10px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold">Lead CTR Optimization</p>
-                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">3.88% Avg</p>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Target CPM is optimized</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">
+                    {(() => {
+                      const totalOfferClicks = offers.reduce((sum, o) => sum + (o.clicksCount || 0), 0);
+                      const totalOfferViews = offers.reduce((sum, o) => sum + (o.viewsCount || 0), 0);
+                      return totalOfferViews > 0 ? ((totalOfferClicks / totalOfferViews) * 100).toFixed(2) : "0.00";
+                    })()}% Avg
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">Calculated from campaign analytics</p>
                 </div>
               </div>
             </div>
