@@ -161,7 +161,7 @@ const STOCK_GALLERY: Record<string, string[]> = {
 // AI Content Generation Endpoint
 app.post("/api/ai/generate-blog", async (req, res) => {
   try {
-    const { topic, keyword, categoryId, tone, length, imageType } = req.body;
+    const { topic, keyword, categoryId, tone, length, imageType, idea } = req.body;
 
     if (!topic || !keyword) {
       return res.status(400).json({ error: "Topic and keyword are required." });
@@ -172,6 +172,7 @@ app.post("/api/ai/generate-blog", async (req, res) => {
     // Step 1: Research & Structuring Phase (no Google search as requested; utilizing custom SEO expert guidelines)
     const researchPrompt = `As an elite SEO digital marketer and expert business analyst, perform a comprehensive, high-fidelity research and structural plan on the topic: "${topic}". 
 Primary Target Keyword: "${keyword}".
+${idea ? `Brief Description / Idea: "${idea}"\nEnsure the research strictly adheres to and fully integrates this core idea.` : ""}
 
 Requirements:
 1. Emulate real-world up-to-date trends and deep professional domain knowledge (up to mid-2026).

@@ -273,6 +273,13 @@ export function Navbar() {
                         {link.name}
                       </Link>
                     ))}
+                    <Link 
+                      to="/admin"
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-brand-purple hover:text-brand-cyan transition-colors border border-transparent hover:border-white/5 flex items-center gap-2"
+                    >
+                      Admin Dashboard
+                    </Link>
 
                   </div>
                 </div>

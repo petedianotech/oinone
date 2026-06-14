@@ -77,7 +77,7 @@ export function AdminDashboard() {
   };
   
   // AI Writer State
-  const [aiForm, setAiForm] = useState({ topic: '', keyword: '', categoryId: 'ai', tone: 'Professional', length: 'Medium (around 800-1000 words)', imageType: 'stock' });
+  const [aiForm, setAiForm] = useState({ topic: '', keyword: '', categoryId: 'ai', tone: 'Professional', length: 'Medium (around 800-1000 words)', idea: '', imageType: 'stock' });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDraft, setGeneratedDraft] = useState<any>(null);
   const [activeCoverIndex, setActiveCoverIndex] = useState<number>(0);
@@ -272,6 +272,67 @@ export function AdminDashboard() {
     } catch (err) {
       console.error('Error saving article', err);
       handleFirestoreError(err, OperationType.WRITE, `articles/${id}`);
+    }
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [isUploadingImg, setIsUploadingImg] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    if (!cloudName || !uploadPreset) {
+      alert("Please configure VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET in your .env file to use Cloudinary image uploads.");
+      return;
+    }
+
+    setIsUploadingImg(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      
+      if (data.secure_url) {
+        const imgTag = `\n<img src="${data.secure_url}" alt="Article Graphic" class="w-full rounded-2xl my-6 shadow-xl object-cover" />\n`;
+        
+        if (textareaRef.current) {
+           const start = textareaRef.current.selectionStart;
+           const end = textareaRef.current.selectionEnd;
+           const content = generatedDraft.content;
+           const newContent = content.substring(0, start) + imgTag + content.substring(end);
+           setGeneratedDraft({ ...generatedDraft, content: newContent });
+           // Re-focus and set cursor position after a tiny delay
+           setTimeout(() => {
+             if (textareaRef.current) {
+               textareaRef.current.focus();
+               textareaRef.current.selectionStart = start + imgTag.length;
+               textareaRef.current.selectionEnd = start + imgTag.length;
+             }
+           }, 10);
+        } else {
+           setGeneratedDraft({ ...generatedDraft, content: generatedDraft.content + imgTag });
+        }
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
+    } catch (err) {
+      console.error("Image upload error", err);
+      alert("Cloudinary Upload Failed. Check your connection or API keys.");
+    } finally {
+      setIsUploadingImg(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -893,6 +954,16 @@ export function AdminDashboard() {
                       <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
                     <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Brief Description / Article Idea</label>
+                      <textarea
+                        value={aiForm.idea}
+                        onChange={e => setAiForm({...aiForm, idea: e.target.value})}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none"
+                        placeholder="Briefly describe what this article should be about... E.g., 'Write an article on how the new React compiler works under the hood with code examples.'"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">Cover Art Selection Protocol</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'stock' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/40 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400'}`}>
@@ -970,8 +1041,43 @@ export function AdminDashboard() {
                       )}
                       
                       <div className="mb-4">
-                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Editorial Prose Preview</label>
-                        <div className="prose prose-slate dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm lg:pr-8" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Editorial Prose Preview</label>
+                          <div className="flex gap-2">
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              ref={fileInputRef} 
+                              onChange={handleImageUpload} 
+                            />
+                            {isEditingDraft && (
+                              <button 
+                                onClick={() => fileInputRef.current?.click()} 
+                                disabled={isUploadingImg}
+                                className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                {isUploadingImg ? "Uploading..." : "Upload Image"}
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => setIsEditingDraft(!isEditingDraft)} 
+                              className="px-3 py-1 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                            >
+                              {isEditingDraft ? "Preview Output" : "Edit HTML Code"}
+                            </button>
+                          </div>
+                        </div>
+                        {isEditingDraft ? (
+                          <textarea 
+                            ref={textareaRef}
+                            value={generatedDraft.content}
+                            onChange={(e) => setGeneratedDraft({...generatedDraft, content: e.target.value})}
+                            className="w-full text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm font-mono focus:outline-none focus:border-indigo-500 transition-colors"
+                          />
+                        ) : (
+                          <div className="prose prose-slate dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm lg:pr-8" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
+                        )}
                       </div>
                     </div>
                   </div>
