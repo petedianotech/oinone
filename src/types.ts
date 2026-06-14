@@ -49,3 +49,13 @@ export interface Category {
   description: string;
   color: string;
 }
+
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  linkUrl: string;
+  status: 'active' | 'inactive';
+  createdAt: number;
+}

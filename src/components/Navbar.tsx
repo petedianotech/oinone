@@ -192,6 +192,20 @@ export function Navbar() {
               </AnimatePresence>
             </div>
             
+            {/* Support/Donate Button */}
+            <a 
+              href="https://give.paychangu.com/dc-wnczzv"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative group px-5 py-2 rounded-full overflow-hidden border border-[#00a89d]/50 bg-black hover:border-[#00a89d] transition-all duration-300 shadow-[0_0_15px_rgba(0,168,157,0.2)] hover:shadow-[0_0_25px_rgba(0,168,157,0.5)] cursor-pointer hidden lg:flex items-center gap-2"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[#00a89d]/20 to-brand-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Heart className="w-3.5 h-3.5 text-[#00a89d] relative z-10" />
+              <span className="font-display font-bold text-xs uppercase tracking-widest text-white relative z-10">
+                Support
+              </span>
+            </a>
+
             {/* Premium Button Trigger */}
             <button 
               onClick={() => setIsSidebarOpen(true)}

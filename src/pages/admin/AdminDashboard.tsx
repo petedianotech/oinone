@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { db, auth, OperationType, handleFirestoreError } from '../../lib/firebase';
 import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
@@ -6,13 +6,17 @@ import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User 
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code, Menu, ArrowRight } from 'lucide-react';
-import { Post, CategoryId, Offer } from '../../types';
+import { Post, CategoryId, Offer, Ad } from '../../types';
 import { subscribeToOffers, createOffer, updateOffer, deleteOffer } from '../../lib/offerService';
+import { subscribeToAds, createAd, updateAd, deleteAd } from '../../lib/adsService';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { SEOAnalyzer } from '../../components/SEOAnalyzer';
 
 export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'ads-manager' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Custom AI settings for systems tab
@@ -29,6 +33,12 @@ export function AdminDashboard() {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerForm, setOfferForm] = useState<Partial<Offer>>({ status: 'active' });
   const [editingOfferId, setEditingOfferId] = useState<string | null>(null);
+
+  // Ads State
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [adForm, setAdForm] = useState<Partial<Ad>>({ status: 'active' });
+  const [editingAdId, setEditingAdId] = useState<string | null>(null);
 
   // Pending Tasks State
   const [tasks, setTasks] = useState<{ id: string; text: string; completed: boolean; priority: 'High' | 'Medium' | 'Low' }[]>(() => {
@@ -90,6 +100,7 @@ export function AdminDashboard() {
 
   useEffect(() => {
     let unsubscribeOffers: (() => void) | null = null;
+    let unsubscribeAds: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       if (u && u.email !== 'petedianotech@gmail.com') {
@@ -99,6 +110,10 @@ export function AdminDashboard() {
           unsubscribeOffers();
           unsubscribeOffers = null;
         }
+        if (unsubscribeAds) {
+          unsubscribeAds();
+          unsubscribeAds = null;
+        }
       } else {
         setUser(u);
         if (u && u.email === 'petedianotech@gmail.com') {
@@ -106,6 +121,11 @@ export function AdminDashboard() {
           if (!unsubscribeOffers) {
             unsubscribeOffers = subscribeToOffers(setOffers, (err) => {
               console.error('[AdminDashboard] Offers subscription failed:', err);
+            });
+          }
+          if (!unsubscribeAds) {
+            unsubscribeAds = subscribeToAds(setAds, (err) => {
+              console.error('[AdminDashboard] Ads subscription failed:', err);
             });
           }
         }
@@ -117,6 +137,9 @@ export function AdminDashboard() {
       unsubscribeAuth();
       if (unsubscribeOffers) {
         unsubscribeOffers();
+      }
+      if (unsubscribeAds) {
+        unsubscribeAds();
       }
     };
   }, []);
@@ -180,6 +203,35 @@ export function AdminDashboard() {
   const handleRemoveOffer = async (id: string) => {
     if (window.confirm('Delete this CPA offer?')) {
       await deleteOffer(id);
+    }
+  };
+
+  const handleSaveAd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (editingAdId) {
+        await updateAd(editingAdId, adForm as any);
+      } else {
+        await createAd(adForm as any);
+      }
+      setShowAdModal(false);
+      setAdForm({ status: 'active' });
+      setEditingAdId(null);
+    } catch (e) {
+      console.error('Failed to save ad', e);
+      alert('Error saving ad. Check console.');
+    }
+  };
+
+  const handleEditAd = (ad: Ad) => {
+    setAdForm(ad);
+    setEditingAdId(ad.id);
+    setShowAdModal(true);
+  };
+
+  const handleRemoveAd = async (id: string) => {
+    if (window.confirm('Delete this Ad?')) {
+      await deleteAd(id);
     }
   };
 
@@ -277,7 +329,9 @@ export function AdminDashboard() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const quillRef = useRef<any>(null);
   const [isEditingDraft, setIsEditingDraft] = useState(false);
+  const [isFullscreenEditor, setIsFullscreenEditor] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,15 +359,18 @@ export function AdminDashboard() {
       const data = await res.json();
       
       if (data.secure_url) {
-        const imgTag = `\n<img src="${data.secure_url}" alt="Article Graphic" class="w-full rounded-2xl my-6 shadow-xl object-cover" />\n`;
-        
-        if (textareaRef.current) {
+        if (!isEditingDraft && quillRef.current) {
+          const quill = quillRef.current.getEditor();
+          const range = quill.getSelection();
+          const position = range ? range.index : quill.getLength();
+          quill.insertEmbed(position, 'image', data.secure_url);
+        } else if (isEditingDraft && textareaRef.current) {
+           const imgTag = `\n<img src="${data.secure_url}" alt="Article Graphic" class="w-full rounded-2xl my-6 shadow-xl object-cover" />\n`;
            const start = textareaRef.current.selectionStart;
            const end = textareaRef.current.selectionEnd;
            const content = generatedDraft.content;
            const newContent = content.substring(0, start) + imgTag + content.substring(end);
            setGeneratedDraft({ ...generatedDraft, content: newContent });
-           // Re-focus and set cursor position after a tiny delay
            setTimeout(() => {
              if (textareaRef.current) {
                textareaRef.current.focus();
@@ -322,7 +379,9 @@ export function AdminDashboard() {
              }
            }, 10);
         } else {
-           setGeneratedDraft({ ...generatedDraft, content: generatedDraft.content + imgTag });
+           // Fallback if editor doesn't have focus
+           const imgHtml = `<img src="${data.secure_url}" alt="Article Graphic" class="w-full rounded-2xl my-6 shadow-xl object-cover" />`;
+           setGeneratedDraft({ ...generatedDraft, content: generatedDraft.content + imgHtml });
         }
       } else {
         throw new Error(data.error?.message || "Upload failed");
@@ -573,6 +632,9 @@ export function AdminDashboard() {
           <button onClick={() => { setActiveTab('offers'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'offers' ? 'bg-indigo-500/20 text-indigo-300 border-l-2 border-indigo-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <Coins className="w-4 h-4" /> Offers Vault
           </button>
+          <button onClick={() => { setActiveTab('ads-manager'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer ${activeTab === 'ads-manager' ? 'bg-indigo-500/20 text-blue-300 border-l-2 border-blue-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            <Sparkles className="w-4 h-4" /> Ads Manager
+          </button>
           
           <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-indigo-200/50 mb-2 px-2">
             Quick Panels
@@ -594,7 +656,7 @@ export function AdminDashboard() {
                 <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-3 brightness-0 invert" />
                 Donate
               </a>
-              <a href="#" className="flex items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-900 border border-white/10 transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
+              <a href="https://give.paychangu.com/dc-wnczzv" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-900 border border-white/10 transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
                 Paychangu
               </a>
             </div>
@@ -1041,9 +1103,9 @@ export function AdminDashboard() {
                       )}
                       
                       <div className="mb-4">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-3">
                           <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Editorial Prose Preview</label>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             <input 
                               type="file" 
                               accept="image/*" 
@@ -1051,20 +1113,24 @@ export function AdminDashboard() {
                               ref={fileInputRef} 
                               onChange={handleImageUpload} 
                             />
-                            {isEditingDraft && (
-                              <button 
-                                onClick={() => fileInputRef.current?.click()} 
-                                disabled={isUploadingImg}
-                                className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                              >
-                                {isUploadingImg ? "Uploading..." : "Upload Image"}
-                              </button>
-                            )}
+                            <button 
+                              onClick={() => fileInputRef.current?.click()} 
+                              disabled={isUploadingImg}
+                              className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              {isUploadingImg ? "Uploading..." : "Insert Image at Cursor"}
+                            </button>
+                            <button 
+                              onClick={() => setIsFullscreenEditor(true)} 
+                              className="px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              Fullscreen Editor
+                            </button>
                             <button 
                               onClick={() => setIsEditingDraft(!isEditingDraft)} 
                               className="px-3 py-1 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 rounded-lg text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/10 transition-colors cursor-pointer"
                             >
-                              {isEditingDraft ? "Preview Output" : "Edit HTML Code"}
+                              {isEditingDraft ? "Visual Editor" : "Raw HTML"}
                             </button>
                           </div>
                         </div>
@@ -1076,8 +1142,37 @@ export function AdminDashboard() {
                             className="w-full text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm font-mono focus:outline-none focus:border-indigo-500 transition-colors"
                           />
                         ) : (
-                          <div className="prose prose-slate dark:prose-invert max-w-none text-sm border p-6 rounded-2xl bg-white dark:bg-[#060610]/80 border-gray-200 dark:border-indigo-950 text-gray-800 dark:text-indigo-100/90 h-[500px] overflow-y-auto leading-relaxed shadow-sm lg:pr-8" dangerouslySetInnerHTML={{ __html: generatedDraft.content }} />
+                          <div className="bg-white dark:bg-[#060610]/80 rounded-2xl border border-gray-200 dark:border-indigo-950 shadow-sm overflow-hidden editor-container">
+                            <ReactQuill 
+                              ref={quillRef}
+                              theme="snow" 
+                              value={generatedDraft.content} 
+                              onChange={(content) => setGeneratedDraft({...generatedDraft, content})}
+                              modules={{
+                                toolbar: [
+                                  [{ 'header': [1, 2, 3, false] }],
+                                  ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                                  [{'list': 'ordered'}, {'list': 'bullet'}],
+                                  ['link', 'clean']
+                                ]
+                              }}
+                              className="h-[430px] p-2"
+                            />
+                            <style>{`
+                              .editor-container .ql-toolbar { border: none !important; border-bottom: 1px solid rgba(100, 116, 139, 0.2) !important; font-family: inherit; }
+                              .editor-container .ql-container { border: none !important; font-family: inherit; font-size: 1rem; }
+                            `}</style>
+                          </div>
                         )}
+                      </div>
+                      
+                      <div className="mb-6">
+                        <SEOAnalyzer 
+                          title={generatedDraft.title}
+                          content={generatedDraft.content}
+                          summary={generatedDraft.summary || generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150)}
+                          keyword={aiForm.keyword}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1091,6 +1186,67 @@ export function AdminDashboard() {
               )}
             </div>
           </motion.div>
+        )}
+
+        {/* Fullscreen Editor Modal */}
+        {isFullscreenEditor && generatedDraft && (
+          <div className="fixed inset-0 z-[100] bg-white dark:bg-gray-950 flex flex-col items-center">
+            <div className="w-full flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur top-0 z-10">
+               <div className="flex items-center gap-4">
+                 <button onClick={() => setIsFullscreenEditor(false)} className="p-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+                   <ArrowRight className="w-5 h-5 -rotate-180 text-gray-700 dark:text-gray-300" />
+                 </button>
+                 <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 capitalize">Document Editor: <span className="text-gray-900 dark:text-white">{generatedDraft.title}</span></h2>
+               </div>
+               <div className="flex gap-2">
+                 <button onClick={() => fileInputRef.current?.click()} className="px-4 py-2 border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors">
+                   Insert Image at Cursor
+                 </button>
+                 <button onClick={() => { setIsFullscreenEditor(false); saveAiDraft(false); }} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-colors active:scale-95">
+                   Done & Save
+                 </button>
+               </div>
+            </div>
+            
+            <div className="flex-1 w-full max-w-4xl mx-auto overflow-y-auto px-4 py-8 custom-scrollbar">
+               <input 
+                 className="w-full text-4xl md:text-5xl font-display font-black text-gray-900 dark:text-white bg-transparent border-none outline-none mb-8"
+                 value={generatedDraft.title}
+                 onChange={(e) => setGeneratedDraft({...generatedDraft, title: e.target.value})}
+                 placeholder="Document Title"
+               />
+               <div className="bg-white dark:bg-gray-950 rounded-2xl editor-fullscreen-container">
+                 <ReactQuill 
+                   ref={quillRef}
+                   theme="snow" 
+                   value={generatedDraft.content} 
+                   onChange={(content) => setGeneratedDraft({...generatedDraft, content})}
+                   modules={{
+                     toolbar: [
+                       [{ 'header': [1, 2, 3, false] }],
+                       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                       [{'list': 'ordered'}, {'list': 'bullet'}],
+                       ['link', 'clean']
+                     ]
+                   }}
+                   className="min-h-[500px]"
+                 />
+                 <style>{`
+                   .editor-fullscreen-container .ql-toolbar { position: sticky; top: -32px; z-index: 10; background: inherit; border: none !important; border-bottom: 2px solid rgba(100, 116, 139, 0.1) !important; font-family: inherit; margin-bottom: 1rem; padding: 1rem 0; }
+                   .editor-fullscreen-container .ql-container { border: none !important; font-family: inherit; font-size: 1.125rem; }
+                 `}</style>
+               </div>
+               
+               <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
+                  <SEOAnalyzer 
+                    title={generatedDraft.title}
+                    content={generatedDraft.content}
+                    summary={generatedDraft.summary || generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150)}
+                    keyword={aiForm.keyword}
+                  />
+               </div>
+            </div>
+          </div>
         )}
 
         {activeTab === 'offers' && (
@@ -1151,6 +1307,64 @@ export function AdminDashboard() {
               {offers.length === 0 && (
                 <div className="col-span-full p-12 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-transparent">
                   <p className="text-gray-500 text-sm">No active monetization offers found. Deploy your first CPA campaign now.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === 'ads-manager' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div className="flex justify-between items-center bg-gray-50 dark:bg-blue-950/20 p-6 rounded-2xl border border-gray-200 dark:border-blue-500/20 shadow-sm relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/10 pointer-events-none" />
+              <div className="relative z-10">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  Ads Manager
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-blue-200/50 mt-1">Manage native banner ads and direct monetization across the platform.</p>
+              </div>
+              <button 
+                onClick={() => { setAdForm({ status: 'active', linkUrl: 'https://beta.publishers.adsterra.com/referral/8HDkTR8X3z', imageUrl: 'https://images.unsplash.com/photo-1620325867502-221ddb5b4e2a?auto=format&fit=crop&q=80&w=600', description: 'Premium Publisher Network', title: 'Adsterra Ad Network' }); setEditingAdId(null); setShowAdModal(true); }}
+                className="relative z-10 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Create Native Ad
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ads.map(ad => (
+                <div key={ad.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:border-blue-400 dark:hover:border-blue-500/40 transition-colors flex flex-col">
+                  {ad.imageUrl && (
+                    <div className="h-40 w-full overflow-hidden bg-gray-100 dark:bg-gray-950">
+                      <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover transition-opacity" loading="lazy" />
+                    </div>
+                  )}
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className={`text-[9px] uppercase font-bold tracking-widest px-2 py-1 rounded border ${ad.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20'}`}>
+                        {ad.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1 line-clamp-1">{ad.title}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{ad.description}</p>
+                    <a href={ad.linkUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 truncate mb-4 block hover:underline">
+                      {ad.linkUrl}
+                    </a>
+                    
+                    <div className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800 flex gap-2">
+                       <button onClick={() => updateAd(ad.id, { status: ad.status === 'active' ? 'inactive' : 'active' })} className="flex-[0.5] flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-gray-200 dark:border-gray-700">
+                        {ad.status === 'active' ? 'Pause' : 'Activate'}
+                      </button>
+                      <button onClick={() => handleEditAd(ad)} className="flex-1 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-indigo-200 dark:border-indigo-500/20">Edit</button>
+                      <button onClick={() => handleRemoveAd(ad.id)} className="flex-1 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-rose-200 dark:border-rose-500/20">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {ads.length === 0 && (
+                <div className="col-span-full p-12 text-center border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl bg-white dark:bg-transparent">
+                  <p className="text-gray-500 text-sm">No active banner ads. Deploy an Ad and start monetizing traffic natively.</p>
                 </div>
               )}
             </div>
@@ -1631,6 +1845,51 @@ export function AdminDashboard() {
               <button form="offer-form" type="submit" className="px-5 py-2.5 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer active:scale-95">
                 {editingOfferId ? 'Update Sequence' : 'Launch Sequence'}
               </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Ads Modal */}
+      {showAdModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-indigo-900/40 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-indigo-950/40">
+              <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">{editingAdId ? 'Update Native Ad' : 'Launch New Native Ad'}</h3>
+              <button type="button" onClick={() => setShowAdModal(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              <form id="ad-form" onSubmit={handleSaveAd} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Ad Banner Image URL</label>
+                  <input type="url" required value={adForm.imageUrl || ''} onChange={(e) => setAdForm({...adForm, imageUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Ad Title</label>
+                  <input type="text" required value={adForm.title || ''} onChange={(e) => setAdForm({...adForm, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Short Description</label>
+                  <input type="text" required value={adForm.description || ''} onChange={(e) => setAdForm({...adForm, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Destination URL / Referral Link</label>
+                  <input type="url" required value={adForm.linkUrl || ''} onChange={(e) => setAdForm({...adForm, linkUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Running Status</label>
+                  <select value={adForm.status || 'active'} onChange={(e) => setAdForm({...adForm, status: e.target.value as any})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none">
+                    <option value="active">Active (Visible)</option>
+                    <option value="inactive">Paused (Hidden)</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div className="p-6 border-t border-gray-100 dark:border-indigo-950/40 flex justify-end gap-3 bg-gray-50 dark:bg-[#0a091f]">
+              <button type="button" onClick={() => setShowAdModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+              <button type="submit" form="ad-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white tracking-wide transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">{editingAdId ? 'Save Ad' : 'Launch Ad'}</button>
             </div>
           </motion.div>
         </div>

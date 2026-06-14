@@ -126,5 +126,11 @@ service cloud.firestore {
       );
       allow delete: if isBlogAdmin();
     }
+
+    // 6. Ads Manager Collection rules
+    match /ads/{adId} {
+      allow read: if true;
+      allow create, update, delete: if isBlogAdmin();
+    }
   }
 }

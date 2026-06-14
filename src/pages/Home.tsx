@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { subscribeToActiveOffers, incrementOfferViews, incrementOfferClicks } from '../lib/offerService';
-import { Offer } from '../types';
+import { subscribeToAds } from '../lib/adsService';
+import { Offer, Ad } from '../types';
 import { ArticleCard, ArticleSkeleton } from '../components/ArticleCard';
 import { Flame, Coins, Cpu, Sparkles, ArrowRight, ExternalLink, Search, Clock, Compass, Zap, Shield, SlidersHorizontal, Calendar, Eye, ThumbsUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,6 +13,7 @@ export function Home() {
   const { posts, loading, getFeaturedPosts, getTrendingPosts } = useBlog();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [featuredOffer, setFeaturedOffer] = useState<Offer | null>(null);
+  const [activeAds, setActiveAds] = useState<Ad[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'views' | 'likes'>('newest');
@@ -23,7 +25,7 @@ export function Home() {
   }, [selectedCategory, searchQuery, sortBy]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToActiveOffers((offers) => {
+    const unsubscribeOffers = subscribeToActiveOffers((offers) => {
       if (offers.length > 0) {
         setFeaturedOffer(offers[0]);
         incrementOfferViews(offers[0].id).catch(console.error);
@@ -33,7 +35,18 @@ export function Home() {
     }, (err) => {
       console.warn('[Home] Active offers subscription silenced:', err);
     });
-    return () => unsubscribe();
+
+    const unsubscribeAds = subscribeToAds((ads) => {
+      const active = ads.filter(ad => ad.status === 'active');
+      setActiveAds(active);
+    }, (err) => {
+      console.warn('[Home] Ads subscription silenced:', err);
+    });
+
+    return () => {
+      unsubscribeOffers();
+      unsubscribeAds();
+    };
   }, []);
 
   const handleOfferClick = async () => {
@@ -199,17 +212,7 @@ export function Home() {
                 )}
               </AnimatePresence>
 
-              {/* Floating Trending Topics */}
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <span className="text-sm font-semibold text-gray-500 mr-2 flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-orange-500" /> Trending Topics:
-                </span>
-                {['Hyper-Automation', 'Zero-Day AI Models', 'Post-SaaS Economy'].map(topic => (
-                  <button key={topic} onClick={() => setSearchQuery(topic)} className="px-4 py-1.5 rounded-full border border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-[#121216]/50 backdrop-blur-md text-xs font-bold text-gray-700 dark:text-gray-300 hover:border-brand-purple hover:text-brand-purple transition-colors">
-                    {topic}
-                  </button>
-                ))}
-              </div>
+              {/* Trending Topics Removed as requested */}
             </motion.div>
           </div>
         </section>
@@ -281,6 +284,51 @@ export function Home() {
                         </span>
                       </div>
                     </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ADSTERRA NATIVE BANNER AD INTEGRATION */}
+            {activeAds.length > 0 && (
+              <section className="mb-12">
+                <div className="flex flex-col gap-6">
+                  {activeAds.map(ad => (
+                    <a 
+                      key={ad.id} 
+                      href={ad.linkUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="group relative flex flex-col md:flex-row items-center justify-between p-6 md:p-8 rounded-[2rem] bg-gradient-to-r from-blue-900/10 via-indigo-900/10 to-purple-900/10 dark:from-blue-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 border border-indigo-200/50 dark:border-indigo-500/20 overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)] hover:-translate-y-1"
+                    >
+                      {/* Decorative backdrop */}
+                      <div className="absolute inset-0 bg-white/40 dark:bg-[#060610]/40 backdrop-blur-sm -z-10" />
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full" />
+                      
+                      <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 z-10 w-full">
+                        {ad.imageUrl && (
+                          <div className="shrink-0 w-full md:w-64 h-40 md:h-32 rounded-2xl overflow-hidden shadow-lg border border-white/20 dark:border-white/5 relative group-hover:scale-105 transition-transform duration-500">
+                             <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" />
+                             <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/50 backdrop-blur-md rounded border border-white/10 text-[9px] font-bold text-white uppercase tracking-widest">
+                               Sponsored
+                             </div>
+                          </div>
+                        )}
+                        <div className="flex-1 text-center md:text-left">
+                          <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 dark:text-white mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {ad.title}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-indigo-200/70 font-medium max-w-2xl">
+                            {ad.description}
+                          </p>
+                        </div>
+                        <div className="shrink-0 mt-4 md:mt-0">
+                          <span className="inline-flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-bold tracking-wide shadow-lg shadow-indigo-600/20 group-hover:bg-indigo-500 transition-colors">
+                            Explore Now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </a>
                   ))}
                 </div>
               </section>
