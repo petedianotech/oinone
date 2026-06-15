@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn, CATEGORIES } from '../lib/utils';
-import { ThemeToggle } from './ThemeToggle';
 import { useBlog } from '../lib/BlogContext';
 
 export function Navbar() {
@@ -56,7 +55,7 @@ export function Navbar() {
         <div className={cn(
           "flex justify-between items-center transition-all duration-500 rounded-full",
           isScrolled 
-            ? "bg-white/80 dark:bg-[#121216]/80 backdrop-blur-xl border border-gray-200 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.1)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-6 py-2" 
+            ? "bg-[#121216]/80 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] px-6 py-2" 
             : "bg-transparent px-2 py-2"
         )}>
           {/* Logo */}
@@ -68,7 +67,7 @@ export function Navbar() {
               className="h-9 w-9 rounded-xl shadow-lg border border-white/10 relative z-10 hover:scale-105 transition-transform"
               referrerPolicy="no-referrer"
             />
-            <span className="font-display font-black text-2xl tracking-tighter text-gray-900 dark:text-white uppercase relative z-10">
+            <span className="font-display font-black text-2xl tracking-tighter text-white uppercase relative z-10">
               Oinone<span className="text-brand-cyan glow-effect">.</span>
             </span>
           </Link>
@@ -83,13 +82,13 @@ export function Navbar() {
                   to={link.path}
                   className={cn(
                     "relative px-4 py-2 text-[11px] font-bold uppercase tracking-widest transition-colors rounded-full",
-                    isActive ? "text-brand-cyan dark:text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
+                    isActive ? "text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
                   )}
                 >
                   {isActive && (
                     <motion.div 
                       layoutId="nav-pill"
-                      className="absolute inset-0 bg-gray-100 dark:bg-white/10 border border-gray-200 dark:border-white/20 rounded-full -z-10"
+                      className="absolute inset-0 bg-white/10 border border-white/20 rounded-full -z-10"
                       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
@@ -104,10 +103,10 @@ export function Navbar() {
             {/* Search */}
             <div className="relative">
               <div className={cn(
-                "flex items-center bg-white/40 dark:bg-black/40 border transition-all duration-300 rounded-full pl-4 pr-2 py-1.5",
+                "flex items-center bg-black/40 border transition-all duration-300 rounded-full pl-4 pr-2 py-1.5",
                 isSearchFocused 
                   ? "border-brand-cyan/50 ring-1 ring-brand-cyan/50 w-64 shadow-[0_0_15px_rgba(6,182,212,0.3)]" 
-                  : "border-gray-200 dark:border-white/10 w-48 hover:border-gray-300 dark:hover:border-white/20 hover:bg-white/60 dark:hover:bg-black/60"
+                  : "border-white/10 w-48 hover:border-white/20 hover:bg-black/60"
               )}>
                 <Search className={cn("h-3.5 w-3.5 flex-shrink-0 transition-colors", isSearchFocused ? "text-brand-cyan" : "text-gray-500")} />
                 <input
@@ -117,7 +116,7 @@ export function Navbar() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
-                  className="bg-transparent border-none outline-none text-xs text-gray-900 dark:text-white placeholder-gray-500 w-full ml-2 font-medium tracking-wide"
+                  className="bg-transparent border-none outline-none text-xs text-white placeholder-gray-500 w-full ml-2 font-medium tracking-wide"
                 />
                 <AnimatePresence>
                   {searchQuery && (
@@ -126,7 +125,7 @@ export function Navbar() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                       onClick={() => setSearchQuery('')}
-                      className="text-gray-500 hover:text-gray-900 dark:hover:text-white cursor-pointer ml-1 bg-gray-200 dark:bg-white/10 rounded-full p-1 transition-colors"
+                      className="text-gray-400 hover:text-white cursor-pointer ml-1 bg-white/10 rounded-full p-1 transition-colors"
                     >
                       <X className="h-3 w-3" />
                     </motion.button>
@@ -141,11 +140,11 @@ export function Navbar() {
                     initial={{ opacity: 0, y: 10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                    className="absolute right-0 mt-4 w-96 bg-white dark:bg-[#121216] border border-gray-200 dark:border-white/10 rounded-3xl shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 z-50 max-h-[28rem] overflow-y-auto glass-panel"
+                    className="absolute right-0 mt-4 w-96 bg-[#121216] border border-white/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 z-50 max-h-[28rem] overflow-y-auto glass-panel"
                     onMouseDown={(e) => e.preventDefault()}
                   >
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-white/5 mb-4 px-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-brand-cyan dark:text-brand-purple">Search Results</span>
+                    <div className="flex items-center justify-between pb-3 border-b border-white/5 mb-4 px-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-brand-purple">Search Results</span>
                       <span className="text-[10px] font-mono text-gray-500">{matchedPosts.length} hits</span>
                     </div>
                     
@@ -161,7 +160,7 @@ export function Navbar() {
                                 setSearchQuery('');
                                 setIsSearchFocused(false);
                               }}
-                              className="flex gap-4 p-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group relative"
+                              className="flex gap-4 p-3 rounded-2xl hover:bg-white/5 transition-colors group relative"
                             >
                               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-0 bg-brand-cyan rounded-r-full transition-all group-hover:h-1/2" />
                               <img src={post.imageUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0 opacity-80 group-hover:opacity-100 transition-opacity" />
@@ -169,7 +168,7 @@ export function Navbar() {
                                 <span className="text-[9px] font-bold uppercase tracking-widest text-brand-purple mb-1 truncate">
                                   {category?.name || post.categoryId}
                                 </span>
-                                <h4 className="text-sm font-bold text-gray-900 dark:text-white group-hover:text-brand-cyan transition-colors truncate leading-tight">
+                                <h4 className="text-sm font-bold text-white group-hover:text-brand-cyan transition-colors truncate leading-tight">
                                   {post.title}
                                 </h4>
                               </div>
@@ -179,11 +178,11 @@ export function Navbar() {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <div className="w-12 h-12 rounded-full border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40 flex items-center justify-center mx-auto mb-3">
-                          <Search className="h-5 w-5 text-gray-500 dark:text-gray-600" />
+                        <div className="w-12 h-12 rounded-full border border-white/10 bg-black/40 flex items-center justify-center mx-auto mb-3">
+                          <Search className="h-5 w-5 text-gray-600" />
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium tracking-wide">
-                          No internal logs found for "<span className="text-gray-900 dark:text-white">{searchQuery}</span>"
+                        <p className="text-xs text-gray-400 font-medium tracking-wide">
+                          No internal logs found for "<span className="text-white">{searchQuery}</span>"
                         </p>
                       </div>
                     )}
@@ -192,19 +191,14 @@ export function Navbar() {
               </AnimatePresence>
             </div>
             
-            {/* Theme Toggle */}
-            <div className="hidden lg:block">
-              <ThemeToggle />
-            </div>
-            
             {/* Support/Donate Button */}
             <Link 
               to="/support"
-              className="relative group px-5 py-2 rounded-full overflow-hidden border border-[#00a89d]/50 bg-black hover:bg-white dark:hover:bg-black hover:border-[#00a89d] transition-all duration-300 shadow-sm cursor-pointer hidden lg:flex items-center gap-2"
+              className="relative group px-5 py-2 rounded-full overflow-hidden border border-[#00a89d]/50 bg-black hover:border-[#00a89d] transition-all duration-300 shadow-[0_0_15px_rgba(0,168,157,0.2)] hover:shadow-[0_0_25px_rgba(0,168,157,0.5)] cursor-pointer hidden lg:flex items-center gap-2"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#00a89d]/20 to-brand-cyan/20 opacity-0 group-hover:opacity-10 dark:group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#00a89d]/20 to-brand-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity" />
               <Heart className="w-3.5 h-3.5 text-[#00a89d] relative z-10" />
-              <span className="font-display font-bold text-xs uppercase tracking-widest text-white group-hover:text-gray-900 dark:group-hover:text-white relative z-10">
+              <span className="font-display font-bold text-xs uppercase tracking-widest text-white relative z-10">
                 Support
               </span>
             </Link>
@@ -212,17 +206,16 @@ export function Navbar() {
             {/* Premium Button Trigger */}
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="relative group px-5 py-2 rounded-full overflow-hidden border border-brand-purple/50 bg-black hover:bg-white dark:hover:bg-black hover:border-brand-purple transition-all duration-300 shadow-sm cursor-pointer hidden md:block"
+              className="relative group px-5 py-2 rounded-full overflow-hidden border border-brand-purple/50 bg-black hover:border-brand-purple transition-all duration-300 shadow-[0_0_15px_rgba(110,86,207,0.3)] hover:shadow-[0_0_25px_rgba(110,86,207,0.6)] cursor-pointer hidden md:block"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-brand-purple/20 to-brand-cyan/20 opacity-0 group-hover:opacity-10 dark:group-hover:opacity-100 transition-opacity" />
-              <span className="font-display font-bold text-xs uppercase tracking-widest text-white group-hover:text-gray-900 dark:group-hover:text-white relative z-10 flex items-center gap-2">
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-purple/20 to-brand-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="font-display font-bold text-xs uppercase tracking-widest text-white relative z-10 flex items-center gap-2">
                 <Sparkles className="w-3.5 h-3.5 text-brand-cyan" /> Premium
               </span>
             </button>
           </div>
 
           <div className="flex items-center space-x-4 md:hidden">
-            <ThemeToggle />
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="relative group px-4 py-1.5 rounded-full overflow-hidden border border-brand-purple/50 bg-black transition-all shadow-[0_0_15px_rgba(110,86,207,0.3)] cursor-pointer"

@@ -55,7 +55,7 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white">
+    <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white overflow-x-hidden w-full relative">
       {!isAdminPage && <Navbar />}
       <div className="flex-grow">
         <ErrorBoundary>
