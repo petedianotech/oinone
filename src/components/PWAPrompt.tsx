@@ -13,12 +13,16 @@ export function PWAPrompt() {
 
   useEffect(() => {
     // 1. Check if first visit
-    const isFirstVisit = !localStorage.getItem('oinone_prompt_v2_dismissed');
-    if (isFirstVisit) {
-      const timer = setTimeout(() => {
-        setShowPrompt(true);
-      }, 1500); // Exquisite transition delay
-      return () => clearTimeout(timer);
+    try {
+      const isFirstVisit = !localStorage.getItem('oinone_prompt_v2_dismissed');
+      if (isFirstVisit) {
+        const timer = setTimeout(() => {
+          setShowPrompt(true);
+        }, 1500); // Exquisite transition delay
+        return () => clearTimeout(timer);
+      }
+    } catch(e) {
+      // Ignore security errors in iframes
     }
   }, []);
 
@@ -71,7 +75,7 @@ export function PWAPrompt() {
       setIsInstallable(false);
       setDeferredPrompt(null);
       // Automatically record dismissed State as they completed action
-      localStorage.setItem('oinone_prompt_v2_dismissed', 'true');
+      try { localStorage.setItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
       setShowPrompt(false);
     }
   };
@@ -89,7 +93,7 @@ export function PWAPrompt() {
       if (permission === 'granted') {
         const _notification = new Notification("Oinone Insights Enabled!", {
           body: "You're all set! You will now receive premium technology, AI, and finance publications immediately.",
-          icon: "/oinone_blog_icon.jpg"
+          icon: "/logo.svg"
         });
       }
       setInAppStatus('success');
@@ -102,7 +106,7 @@ export function PWAPrompt() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem('oinone_prompt_v2_dismissed', 'true');
+    try { localStorage.setItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
     setShowPrompt(false);
   };
 
@@ -129,9 +133,9 @@ export function PWAPrompt() {
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">
             <img
-              src="/oinone_blog_icon.jpg"
+              src="/logo.svg"
               alt="Oinone App Logo"
-              className="h-12 w-12 rounded-xl shadow-md border border-gray-100 dark:border-gray-800 object-cover"
+              className="h-12 w-12 rounded-xl shadow-md border border-gray-100 dark:border-gray-800"
               referrerPolicy="no-referrer"
             />
           </div>

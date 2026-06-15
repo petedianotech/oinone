@@ -63,9 +63,9 @@ export function Navbar() {
           <Link to="/" className="flex-shrink-0 flex items-center gap-3 relative group">
             <div className="absolute inset-0 bg-brand-cyan/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             <img 
-              src="/oinone_blog_icon.jpg" 
+              src="/logo.svg" 
               alt="Oinone Premium Logo" 
-              className="h-9 w-9 rounded-xl shadow-lg border border-white/20 object-cover relative z-10 hover:scale-105 transition-transform"
+              className="h-9 w-9 rounded-xl shadow-lg border border-white/10 relative z-10 hover:scale-105 transition-transform"
               referrerPolicy="no-referrer"
             />
             <span className="font-display font-black text-2xl tracking-tighter text-white uppercase relative z-10">

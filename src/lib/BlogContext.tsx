@@ -1,3 +1,6 @@
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Post, CategoryId } from '../types';
 import { subscribeToArticles } from './blogService';
@@ -16,7 +19,7 @@ const BlogContext = createContext<BlogContextType | undefined>(undefined);
 export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<Post[]>(() => {
     try {
-      const cached = localStorage.getItem('oinone_cached_posts');
+      const cached = safeGetItem('oinone_cached_posts');
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -24,7 +27,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [loading, setLoading] = useState(() => {
     try {
-      const cached = localStorage.getItem('oinone_cached_posts');
+      const cached = safeGetItem('oinone_cached_posts');
       return !cached;
     } catch {
       return true;
@@ -38,7 +41,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPosts(realtimePosts);
         setLoading(false);
         try {
-          localStorage.setItem('oinone_cached_posts', JSON.stringify(realtimePosts));
+          safeSetItem('oinone_cached_posts', JSON.stringify(realtimePosts));
         } catch (e) {
           console.error(e);
         }
@@ -46,7 +49,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (error) => {
         console.error('[BlogProvider Listener Error]:', error);
         try {
-          const cached = localStorage.getItem('oinone_cached_posts');
+          const cached = safeGetItem('oinone_cached_posts');
           if (cached) {
             setPosts(JSON.parse(cached));
           }
@@ -62,7 +65,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const found = posts.find((p) => p.id === id);
     if (found) return found;
     try {
-      const cached = localStorage.getItem(`offline_post_${id}`);
+      const cached = safeGetItem(`offline_post_${id}`);
       if (cached) {
         return JSON.parse(cached) as Post;
       }

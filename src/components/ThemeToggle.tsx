@@ -1,3 +1,6 @@
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import { useEffect, useState } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -5,7 +8,7 @@ import { motion } from 'motion/react';
 export function ThemeToggle() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('theme');
+      const stored = safeGetItem('theme');
       if (stored === 'light' || stored === 'dark') return stored;
       
       const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -21,7 +24,7 @@ export function ThemeToggle() {
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('theme', theme);
+    safeSetItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

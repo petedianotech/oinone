@@ -19,12 +19,17 @@ import { MOCK_POSTS } from '../data/mockData';
 
 // Generate or retrieve visitor ID for reaction tracking
 const getVisitorId = (): string => {
-  let id = localStorage.getItem('oinone_visitor_id');
-  if (!id) {
-    id = 'visitor_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-    localStorage.setItem('oinone_visitor_id', id);
+  try {
+    let id = localStorage.getItem('oinone_visitor_id');
+    if (!id) {
+      id = 'visitor_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem('oinone_visitor_id', id);
+    }
+    return id;
+  } catch (e) {
+    // Fallback for restricted iframes (e.g., AI Studio preview)
+    return 'visitor_' + Math.random().toString(36).substring(2, 15);
   }
-  return id;
 };
 
 export const VISITOR_ID = getVisitorId();
@@ -247,16 +252,18 @@ export async function addPostComment(postId: string, authorName: string, content
  */
 export async function incrementPostViews(postId: string): Promise<void> {
   const viewedKey = `viewed_${postId}`;
-  if (sessionStorage.getItem(viewedKey)) {
-    return; // Already viewed in this session
-  }
+  try {
+    if (sessionStorage.getItem(viewedKey)) {
+      return; // Already viewed in this session
+    }
+  } catch(e) {}
   
   try {
     const postRef = doc(db, 'articles', postId);
     await updateDoc(postRef, {
       viewsCount: increment(1)
     });
-    sessionStorage.setItem(viewedKey, 'true');
+    try { sessionStorage.setItem(viewedKey, 'true'); } catch(e){}
   } catch (err) {
     // silently fail
   }

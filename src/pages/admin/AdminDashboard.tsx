@@ -1,3 +1,6 @@
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { db, auth, OperationType, handleFirestoreError } from '../../lib/firebase';
@@ -43,7 +46,7 @@ export function AdminDashboard() {
 
   // Pending Tasks State
   const [tasks, setTasks] = useState<{ id: string; text: string; completed: boolean; priority: 'High' | 'Medium' | 'Low' }[]>(() => {
-    const saved = localStorage.getItem('admin-hub-tasks');
+    const saved = safeGetItem('admin-hub-tasks');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -63,7 +66,7 @@ export function AdminDashboard() {
   const [newTaskPriority, setNewTaskPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
 
   useEffect(() => {
-    localStorage.setItem('admin-hub-tasks', JSON.stringify(tasks));
+    safeSetItem('admin-hub-tasks', JSON.stringify(tasks));
   }, [tasks]);
 
   const toggleTask = (id: string) => {

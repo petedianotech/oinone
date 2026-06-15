@@ -1,3 +1,6 @@
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn, optimizeImageUrl } from '../lib/utils';
@@ -22,7 +25,7 @@ export function ArticlePage() {
 
   const [comments, setComments] = useState<CommentData[]>(() => {
     try {
-      const cachedComments = localStorage.getItem(`offline_comments_${articleId}`);
+      const cachedComments = safeGetItem(`offline_comments_${articleId}`);
       return cachedComments ? JSON.parse(cachedComments) : [];
     } catch {
       return [];
@@ -48,7 +51,7 @@ export function ArticlePage() {
     mindBlown: boolean;
   }>(() => {
     try {
-      const savedReacts = localStorage.getItem(`reactions_${articleId}`);
+      const savedReacts = safeGetItem(`reactions_${articleId}`);
       return savedReacts ? JSON.parse(savedReacts) : { like: false, informative: false, inspiring: false, mindBlown: false };
     } catch {
       return { like: false, informative: false, inspiring: false, mindBlown: false };
@@ -57,9 +60,9 @@ export function ArticlePage() {
 
   useEffect(() => {
     try {
-      const savedReacts = localStorage.getItem(`reactions_${articleId}`);
+      const savedReacts = safeGetItem(`reactions_${articleId}`);
       setReactions(savedReacts ? JSON.parse(savedReacts) : { like: false, informative: false, inspiring: false, mindBlown: false });
-      const isSaved = localStorage.getItem(`saved_${articleId}`);
+      const isSaved = safeGetItem(`saved_${articleId}`);
       setSaved(!!isSaved);
     } catch {
       setReactions({ like: false, informative: false, inspiring: false, mindBlown: false });
@@ -81,15 +84,15 @@ export function ArticlePage() {
       (loadedComments) => {
         setComments(loadedComments);
         try {
-          if (localStorage.getItem(`saved_${articleId}`)) {
-            localStorage.setItem(`offline_comments_${articleId}`, JSON.stringify(loadedComments));
+          if (safeGetItem(`saved_${articleId}`)) {
+            safeSetItem(`offline_comments_${articleId}`, JSON.stringify(loadedComments));
           }
         } catch {}
       },
       (error) => {
         console.error('[ArticlePage]: Loading comment thread. Default to offline cache.', error);
         try {
-          const cachedComments = localStorage.getItem(`offline_comments_${articleId}`);
+          const cachedComments = safeGetItem(`offline_comments_${articleId}`);
           if (cachedComments) setComments(JSON.parse(cachedComments));
         } catch {}
       }
@@ -290,7 +293,7 @@ export function ArticlePage() {
     const newStatus = !reactions[type];
     const updated = { ...reactions, [type]: newStatus };
     setReactions(updated);
-    try { localStorage.setItem(tokenKey, JSON.stringify(updated)); } catch (err) {}
+    try { safeSetItem(tokenKey, JSON.stringify(updated)); } catch (err) {}
     try {
       const result = await togglePostLike(articleId);
       setLikesCount(result.count);
@@ -303,13 +306,13 @@ export function ArticlePage() {
     setSaved(newStatus);
     try {
       if (newStatus) {
-        localStorage.setItem(`saved_${articleId}`, "true");
-        localStorage.setItem(`offline_post_${articleId}`, JSON.stringify(post));
-        localStorage.setItem(`offline_comments_${articleId}`, JSON.stringify(comments));
+        safeSetItem(`saved_${articleId}`, "true");
+        safeSetItem(`offline_post_${articleId}`, JSON.stringify(post));
+        safeSetItem(`offline_comments_${articleId}`, JSON.stringify(comments));
       } else {
-        localStorage.removeItem(`saved_${articleId}`);
-        localStorage.removeItem(`offline_post_${articleId}`);
-        localStorage.removeItem(`offline_comments_${articleId}`);
+        safeRemoveItem(`saved_${articleId}`);
+        safeRemoveItem(`offline_post_${articleId}`);
+        safeRemoveItem(`offline_comments_${articleId}`);
       }
     } catch (err) {}
   };
@@ -354,7 +357,7 @@ export function ArticlePage() {
             "name": "Oinone",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://oinone.com/oinone_blog_icon.jpg"
+              "url": "https://oinone.com/logo.svg"
             }
           },
           "mainEntityOfPage": {
