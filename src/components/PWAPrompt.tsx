@@ -1,3 +1,6 @@
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, HardDrive, X, Share, Plus, CheckCircle, Smartphone } from 'lucide-react';
@@ -14,7 +17,7 @@ export function PWAPrompt() {
   useEffect(() => {
     // 1. Check if first visit
     try {
-      const isFirstVisit = !localStorage.getItem('oinone_prompt_v2_dismissed');
+      const isFirstVisit = !safeGetItem('oinone_prompt_v2_dismissed');
       if (isFirstVisit) {
         const timer = setTimeout(() => {
           setShowPrompt(true);
@@ -75,7 +78,7 @@ export function PWAPrompt() {
       setIsInstallable(false);
       setDeferredPrompt(null);
       // Automatically record dismissed State as they completed action
-      try { localStorage.setItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
+      try { safeSetItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
       setShowPrompt(false);
     }
   };
@@ -106,7 +109,7 @@ export function PWAPrompt() {
   };
 
   const handleDismiss = () => {
-    try { localStorage.setItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
+    try { safeSetItem('oinone_prompt_v2_dismissed', 'true'); } catch(e){}
     setShowPrompt(false);
   };
 

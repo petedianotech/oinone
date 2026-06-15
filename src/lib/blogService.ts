@@ -1,3 +1,8 @@
+const safeSessionGetItem = (k: string) => { try { return sessionStorage.getItem(k); } catch(e) { return null; } };
+const safeSessionSetItem = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch(e) {} };
+const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
+const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import { 
   collection, 
   doc, 
@@ -20,10 +25,10 @@ import { MOCK_POSTS } from '../data/mockData';
 // Generate or retrieve visitor ID for reaction tracking
 const getVisitorId = (): string => {
   try {
-    let id = localStorage.getItem('oinone_visitor_id');
+    let id = safeGetItem('oinone_visitor_id');
     if (!id) {
       id = 'visitor_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      localStorage.setItem('oinone_visitor_id', id);
+      safeSetItem('oinone_visitor_id', id);
     }
     return id;
   } catch (e) {
@@ -253,7 +258,7 @@ export async function addPostComment(postId: string, authorName: string, content
 export async function incrementPostViews(postId: string): Promise<void> {
   const viewedKey = `viewed_${postId}`;
   try {
-    if (sessionStorage.getItem(viewedKey)) {
+    if (safeSessionGetItem(viewedKey)) {
       return; // Already viewed in this session
     }
   } catch(e) {}
@@ -263,7 +268,7 @@ export async function incrementPostViews(postId: string): Promise<void> {
     await updateDoc(postRef, {
       viewsCount: increment(1)
     });
-    try { sessionStorage.setItem(viewedKey, 'true'); } catch(e){}
+    try { safeSessionSetItem(viewedKey, 'true'); } catch(e){}
   } catch (err) {
     // silently fail
   }

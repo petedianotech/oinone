@@ -35,11 +35,7 @@ class ErrorBoundary extends Component<{children: React.ReactNode}, {hasError: bo
 }
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Monetag service worker registered successfully:', reg.scope))
-      .catch(err => console.error('Monetag service worker registration failed:', err));
-  });
+  // Service workers disabled until cache handles are properly addressed
 }
 
 createRoot(document.getElementById('root')!).render(

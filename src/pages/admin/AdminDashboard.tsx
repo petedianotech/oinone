@@ -109,13 +109,27 @@ export function AdminDashboard() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       if (u) {
         try {
-          const res = await fetch('/api/admin/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: u.email }),
-          });
-          const data = await res.json();
-          if (!data.isAdmin) {
+          let isAdminVerified = false;
+          try {
+            const res = await fetch('/api/admin/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: u.email }),
+            });
+            if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+              const data = await res.json();
+              isAdminVerified = !!data.isAdmin;
+            } else {
+              throw new Error('API verify unavailable');
+            }
+          } catch (apiError) {
+            console.log('API verification fallback triggered.');
+            // Fallback for Vercel/Static deployments where the Express server isn't running
+            const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com";
+            isAdminVerified = Boolean(u.email && u.email.toLowerCase() === adminEmail.toLowerCase());
+          }
+
+          if (!isAdminVerified) {
             await signOut(auth);
             setUser(null);
             setIsAdmin(false);
@@ -272,13 +286,27 @@ export function AdminDashboard() {
         prompt: 'select_account'
       });
       const result = await signInWithPopup(auth, provider);
-      const res = await fetch('/api/admin/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: result.user.email }),
-      });
-      const data = await res.json();
-      if (!data.isAdmin) {
+      
+      let isAdminVerified = false;
+      try {
+        const res = await fetch('/api/admin/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: result.user.email }),
+        });
+        if (res.ok && res.headers.get('content-type')?.includes('application/json')) {
+          const data = await res.json();
+          isAdminVerified = !!data.isAdmin;
+        } else {
+          throw new Error('API verify unavailable');
+        }
+      } catch (apiError) {
+        console.log('API verification fallback triggered.');
+        const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com";
+        isAdminVerified = Boolean(result.user.email && result.user.email.toLowerCase() === adminEmail.toLowerCase());
+      }
+
+      if (!isAdminVerified) {
         await signOut(auth);
         setUser(null);
         setIsAdmin(false);
@@ -570,15 +598,9 @@ export function AdminDashboard() {
           <h1 className="font-display text-3xl font-black mb-3 tracking-tight">
             Terminal Access
           </h1>
-          <p className="text-gray-400 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+          <p className="text-gray-400 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
             Authentication is restricted to the pre-configured editor credentials.
           </p>
-
-          {/* Configured account display */}
-          <div className="mb-8 p-4 bg-white/5 rounded-2xl border border-white/5 text-left space-y-1">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-brand-purple">Authorized Editor Node</span>
-            <p className="text-sm font-medium text-white font-mono break-all">petedianotech@gmail.com</p>
-          </div>
 
           {/* Direct Google Action Button */}
           <button 
@@ -586,10 +608,10 @@ export function AdminDashboard() {
             className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-200 text-[#0a0a0c] p-3.5 rounded-xl font-semibold transition-all shadow-lg hover:scale-[1.02] cursor-pointer"
           >
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-              <path
-                fill="#EA4335"
-                d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.86-3.577-7.86-8s3.53-8 7.86-8c2.46 0 4.105 1.025 5.047 1.926l3.256-3.133C18.29 1.137 15.54 0 12.24 0 5.48 0 0 5.37 0 12s5.48 12 12.24 12c7.06 0 11.75-4.82 11.75-11.72 0-.79-.08-1.4-.2-1.995H12.24z"
-              />
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.17v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.17C1.43 8.55 1 10.22 1 12s.43 3.45 1.17 4.93l2.88-2.24l.79-.6z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.17 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.17-4.53z" />
             </svg>
             <span className="text-sm">Sign In with Google</span>
           </button>
@@ -743,18 +765,7 @@ export function AdminDashboard() {
              <span className="w-2 h-2 rounded-full bg-purple-400" /> AI Systems
           </button>
 
-          <div className="mt-8 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
-            <h5 className="font-bold text-xs text-indigo-300 mb-2">Support the Platform</h5>
-            <div className="flex flex-col gap-2">
-              <a href="#" className="flex items-center justify-center gap-2 bg-[#0070ba] hover:bg-[#003087] transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-3 brightness-0 invert" />
-                Donate
-              </a>
-              <a href="https://give.paychangu.com/dc-wnczzv" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-gray-800 hover:bg-gray-900 border border-white/10 transition-colors py-2 rounded-xl font-bold text-white text-[10px]">
-                Paychangu
-              </a>
-            </div>
-          </div>
+
         </nav>
  
         <button onClick={handleLogout} className="mt-4 flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-400 hover:text-rose-400 transition-colors cursor-pointer relative z-10 shrink-0">
