@@ -125,8 +125,9 @@ export function AdminDashboard() {
           } catch (apiError) {
             console.log('API verification fallback triggered.');
             // Fallback for Vercel/Static deployments where the Express server isn't running
-            const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com";
-            isAdminVerified = Boolean(u.email && u.email.toLowerCase() === adminEmail.toLowerCase());
+            const adminEmailStr = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com,peterleodamiano@gmail.com";
+            const allowedEmails = adminEmailStr.split(',').map((e: string) => e.trim().toLowerCase());
+            isAdminVerified = Boolean(u.email && allowedEmails.includes(u.email.toLowerCase()));
           }
 
           if (!isAdminVerified) {
@@ -302,8 +303,9 @@ export function AdminDashboard() {
         }
       } catch (apiError) {
         console.log('API verification fallback triggered.');
-        const adminEmail = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com";
-        isAdminVerified = Boolean(result.user.email && result.user.email.toLowerCase() === adminEmail.toLowerCase());
+        const adminEmailStr = import.meta.env.VITE_ADMIN_EMAIL || import.meta.env.ADMIN_EMAIL || "petedianotech@gmail.com,peterleodamiano@gmail.com";
+        const allowedEmails = adminEmailStr.split(',').map((e: string) => e.trim().toLowerCase());
+        isAdminVerified = Boolean(result.user.email && allowedEmails.includes(result.user.email.toLowerCase()));
       }
 
       if (!isAdminVerified) {

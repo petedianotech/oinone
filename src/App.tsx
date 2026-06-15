@@ -23,6 +23,7 @@ const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms }
 const Disclaimer = lazy(() => import('./pages/Disclaimer').then(m => ({ default: m.Disclaimer })));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const OffersVault = lazy(() => import('./pages/OffersVault').then(m => ({ default: m.OffersVault })));
+const Support = lazy(() => import('./pages/Support').then(m => ({ default: m.Support })));
 
 function SuspenseLoader() {
   return (
@@ -68,6 +69,7 @@ function AppContent() {
               <Route path="/terms-of-service" element={<Terms />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/disclaimer" element={<Disclaimer />} />
+              <Route path="/support" element={<Support />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/category/:categoryId" element={<CategoryPage />} />
               <Route path="/:categoryId" element={<CategoryPage />} />

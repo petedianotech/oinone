@@ -162,8 +162,9 @@ const STOCK_GALLERY: Record<string, string[]> = {
 // Admin Verification Endpoint
 app.post("/api/admin/verify", (req, res) => {
   const { email } = req.body;
-  const adminEmail = process.env.ADMIN_EMAIL || "petedianotech@gmail.com";
-  const isValid = email && email.toLowerCase() === adminEmail.toLowerCase();
+  const adminEmailStr = process.env.ADMIN_EMAIL || process.env.VITE_ADMIN_EMAIL || "petedianotech@gmail.com,peterleodamiano@gmail.com";
+  const allowedEmails = adminEmailStr.split(',').map((e: string) => e.trim().toLowerCase());
+  const isValid = email && allowedEmails.includes(email.toLowerCase());
   res.json({ isAdmin: isValid });
 });
 
