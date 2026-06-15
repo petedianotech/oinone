@@ -233,9 +233,9 @@ export function AdminDashboard() {
       setShowOfferModal(false);
       setOfferForm({ status: 'active' });
       setEditingOfferId(null);
-    } catch (e) {
-      console.error('Failed to save offer', e);
-      alert('Error saving offer. Check console.');
+    } catch (error: any) {
+      console.error('Failed to save offer', error);
+      alert(`Error saving offer:\n\n${error.message || String(error)}`);
     }
   };
 
@@ -262,9 +262,9 @@ export function AdminDashboard() {
       setShowAdModal(false);
       setAdForm({ status: 'active' });
       setEditingAdId(null);
-    } catch (e) {
-      console.error('Failed to save ad', e);
-      alert('Error saving ad. Check console.');
+    } catch (error: any) {
+      console.error('Failed to save ad', error);
+      alert(`Error saving ad:\n\n${error.message || String(error)}`);
     }
   };
 
@@ -336,15 +336,27 @@ export function AdminDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate content');
+        let errText = 'Failed to generate content';
+        try {
+          const errPayload = await response.json();
+          if (errPayload && errPayload.error) {
+            errText = `${errPayload.error}${errPayload.details ? `\n\nDetails:\n${errPayload.details}` : ''}`;
+          }
+        } catch (_) {
+          // If response is not JSON or parsing fails
+          try {
+            errText = await response.text();
+          } catch (_) {}
+        }
+        throw new Error(errText);
       }
 
       const data = await response.json();
       setGeneratedDraft({ ...data, categoryId: aiForm.categoryId });
       setActiveCoverIndex(0);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Error generating AI content');
+      alert(`Error generating AI content:\n\n${err.message || err}`);
     } finally {
       setIsGenerating(false);
     }

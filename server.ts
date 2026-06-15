@@ -7,15 +7,26 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 app.use(express.json());
 
 const PORT = 3000;
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-});
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient(): GoogleGenAI {
+  if (!aiClient) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error("Missing GEMINI_API_KEY environment variable. Please make sure GEMINI_API_KEY is configured in your project settings/environment variables.");
+    }
+    aiClient = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+    });
+  }
+  return aiClient;
+}
 
 // Helper function to safely call Gemini with fallback plans if any model is overloaded or fails
 async function generateContentWithRetry(params: {
@@ -74,7 +85,7 @@ async function generateContentWithRetry(params: {
           config: currentConfig
         };
 
-        return await ai.models.generateContent(currentParams);
+        return await getAiClient().models.generateContent(currentParams);
       } catch (error: any) {
         lastError = error;
         const errMsg = error.message || String(error);
@@ -89,7 +100,7 @@ async function generateContentWithRetry(params: {
           delete cleanConfig.toolConfig;
           paramsWithoutTools.config = cleanConfig;
           try {
-            return await ai.models.generateContent(paramsWithoutTools);
+            return await getAiClient().models.generateContent(paramsWithoutTools);
           } catch (noToolsError: any) {
             console.warn(`[Gemini SDK Error] Retrying same model "${currentModel}" WITHOUT tools also failed:`, noToolsError.message || noToolsError);
             lastError = noToolsError;
@@ -296,7 +307,7 @@ SUMMARY: [your simple English summary]`;
 
       const imagePromises = promptsToRun.map(async (prompt) => {
         try {
-          const imageRes = await ai.models.generateImages({
+          const imageRes = await getAiClient().models.generateImages({
             model: 'imagen-4.0-generate-001',
             prompt: prompt,
             config: {
@@ -345,9 +356,13 @@ SUMMARY: [your simple English summary]`;
       seoKeyword: keyword
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI Generation Error:", error);
-    res.status(500).json({ error: "Failed to generate AI content" });
+    const errorMessage = error?.message || String(error);
+    res.status(500).json({ 
+      error: `AI Generation Error: ${errorMessage}`,
+      details: error?.stack || String(error)
+    });
   }
 });
 
@@ -550,9 +565,13 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
 }
 
 startServer();
+
+export default app;
