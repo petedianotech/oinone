@@ -15,6 +15,11 @@ interface BlogContextType {
   getTrendingPosts: () => Post[];
   promos: Record<PromoCampaign['id'], PromoCampaign>;
   updatePromo: (id: PromoCampaign['id'], updates: Partial<PromoCampaign>) => Promise<void>;
+  preferredCategories: string[];
+  isPersonalizedFilterActive: boolean;
+  setIsPersonalizedFilterActive: (active: boolean) => void;
+  streak: number;
+  handleTogglePreference: (categoryId: string) => void;
 }
 
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
@@ -138,6 +143,65 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   };
 
+  // Personalization fields for Finance, Technology, MMO, AI categories
+  const [preferredCategories, setPreferredCategories] = useState<string[]>(() => {
+    try {
+      const cached = safeGetItem('oinone_preferred_categories');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isPersonalizedFilterActive, setIsPersonalizedFilterActive] = useState<boolean>(true);
+  const [streak, setStreak] = useState<number>(0);
+
+  // Daily learning streak computation
+  useEffect(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const lastVisit = safeGetItem('oinone_last_visit');
+      const currentStreak = safeGetItem('oinone_streak');
+      let newStreak = currentStreak ? parseInt(currentStreak, 10) : 0;
+
+      if (!lastVisit) {
+        newStreak = 1;
+        safeSetItem('oinone_last_visit', today);
+        safeSetItem('oinone_streak', '1');
+      } else if (lastVisit !== today) {
+        const lastVisitDate = new Date(lastVisit);
+        const todayDate = new Date(today);
+        const diffTime = Math.abs(todayDate.getTime() - lastVisitDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 1) {
+          newStreak += 1;
+        } else {
+          newStreak = 1; // broken streak, reset
+        }
+        safeSetItem('oinone_last_visit', today);
+        safeSetItem('oinone_streak', newStreak.toString());
+      }
+      setStreak(newStreak || 1);
+    } catch (err) {
+      console.warn('[Streak Loader Error]:', err);
+    }
+  }, []);
+
+  const handleTogglePreference = (categoryId: string) => {
+    let updated: string[];
+    if (preferredCategories.includes(categoryId)) {
+      updated = preferredCategories.filter(id => id !== categoryId);
+    } else {
+      updated = [...preferredCategories, categoryId];
+    }
+    setPreferredCategories(updated);
+    try {
+      safeSetItem('oinone_preferred_categories', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <BlogContext.Provider
       value={{
@@ -149,6 +213,11 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getTrendingPosts,
         promos,
         updatePromo,
+        preferredCategories,
+        isPersonalizedFilterActive,
+        setIsPersonalizedFilterActive,
+        streak,
+        handleTogglePreference,
       }}
     >
       {children}

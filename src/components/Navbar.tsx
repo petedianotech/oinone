@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink, Compass, Coins, Cpu, Zap, Shield, Brain } from 'lucide-react';
+import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink, Compass, Coins, Cpu, Zap, Shield, Brain, Flame } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn, CATEGORIES } from '../lib/utils';
 import { useBlog } from '../lib/BlogContext';
@@ -13,7 +13,15 @@ export function Navbar() {
   const [activeChannel, setActiveChannel] = useState<string>(() => {
     return localStorage.getItem('user_active_channel') || 'all';
   });
-  const { posts, promos } = useBlog();
+  const { 
+    posts, 
+    promos, 
+    preferredCategories, 
+    isPersonalizedFilterActive, 
+    setIsPersonalizedFilterActive, 
+    streak, 
+    handleTogglePreference 
+  } = useBlog();
   const location = useLocation();
 
   const navPromo = promos?.navbar_sidebar_widget;
@@ -302,6 +310,85 @@ export function Navbar() {
                    <Link to="/vault" onClick={() => setIsSidebarOpen(false)} className="inline-block w-full py-3 bg-white text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-gray-200 transition-colors text-center relative z-10 font-sans shadow-lg cursor-pointer">
                      Enter the Vault
                    </Link>
+                </div>
+
+                {/* TAILOR OINONE PERSONALIZATION HUB */}
+                <div className="p-5 rounded-2xl border border-white/5 bg-gradient-to-br from-[#121216] via-[#16161c] to-[#121216] relative overflow-hidden space-y-4 shadow-xl">
+                  {/* Ambient lights */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/10 blur-[40px] rounded-full pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-500/10 blur-[40px] rounded-full pointer-events-none" />
+                  
+                  <div className="relative z-10 space-y-3 text-left">
+                    <h4 className="font-display font-black text-sm text-white tracking-tight leading-snug">
+                      Tailor Oinone to Your Ambitions
+                    </h4>
+                    <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+                      Select your preferred categories to dynamically prioritize the most relevant high-value insights, trends, and market analysis at the top of your feed.
+                    </p>
+                    
+                    {/* Learn Streak */}
+                    <div className="flex flex-col gap-1 pt-1">
+                      <div className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/25 px-2.5 py-1 rounded-xl text-amber-400 text-[10px] font-extrabold uppercase tracking-wide">
+                        <Flame className="w-3.5 h-3.5 text-amber-500" />
+                        Daily Learning Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
+                      </div>
+                      <span className="text-[9px] text-gray-500 font-bold ml-1">
+                        Visit daily to grow your knowledge streak! 📈
+                      </span>
+                    </div>
+
+                    {/* Preferred Toggles */}
+                    <div className="space-y-3 pt-2">
+                      <div className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400">
+                        My Preferred Categories:
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { id: 'finance', name: 'Finance', icon: Coins },
+                          { id: 'technology', name: 'Technology', icon: Cpu },
+                          { id: 'mmo', name: 'Make Money', icon: Zap },
+                          { id: 'ai', name: 'AI', icon: Sparkles },
+                        ].map((pref) => {
+                          const PrefIcon = pref.icon;
+                          const isSelected = preferredCategories.includes(pref.id);
+                          return (
+                            <button
+                              key={`sidebar-pref-${pref.id}`}
+                              onClick={() => handleTogglePreference(pref.id)}
+                              className={`flex items-center gap-2 p-2 rounded-xl text-[10px] font-bold transition-all relative cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-cyan-500/20 border-cyan-400/50 text-white shadow-md shadow-cyan-500/5'
+                                  : 'bg-white/5 border-transparent text-gray-400 hover:text-white hover:bg-white/10'
+                              }`}
+                            >
+                              <PrefIcon className={`w-3 h-3 ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`} />
+                              <span className="truncate">{pref.name}</span>
+                              {isSelected && (
+                                <span className="absolute top-1 right-1 w-1 h-1 rounded-full bg-cyan-400" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {preferredCategories.length > 0 && (
+                        <div className="flex items-center gap-2 pt-2">
+                          <label className="relative inline-flex items-center cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isPersonalizedFilterActive}
+                              onChange={(e) => setIsPersonalizedFilterActive(e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-8 h-4 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-cyan-400 after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all dark:border-gray-600 peer-checked:bg-cyan-500/20" />
+                            <span className="ml-2 text-[10px] font-bold text-gray-400">
+                              {isPersonalizedFilterActive ? '⚡ Prioritize Preferred' : 'Prioritize Preferred OFF'}
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* PERSONALIZED DISCOVERY SECTION */}

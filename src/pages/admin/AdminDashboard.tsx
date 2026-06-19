@@ -63,7 +63,7 @@ export function AdminDashboard() {
     }
     return [
       { id: 't1', text: 'Synthesize blog post using Gemini 3.1 flash lite', completed: false, priority: 'High' },
-      { id: 't2', text: 'Configure custom stock/Imagen art for fintech article', completed: false, priority: 'Medium' },
+      { id: 't2', text: 'Configure custom stock/Pollinations art for fintech article', completed: false, priority: 'Medium' },
       { id: 't3', text: 'Audit CPA marketing and lead campaign conversions', completed: true, priority: 'High' },
       { id: 't4', text: 'SEO audit tech article meta descriptions & headers', completed: false, priority: 'Low' },
     ];
@@ -121,12 +121,19 @@ export function AdminDashboard() {
         }),
       });
 
-      if (!response.ok) throw new Error('API request failed');
+      if (!response.ok) {
+        let errMsg = 'Failed to ideate topics. Make sure server is running.';
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       setIdeatedTopics(data.topics || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to ideate topics. Make sure server is running.');
+      alert(err.message || 'Failed to ideate topics. Make sure server is running.');
     } finally {
       setIsIdeatingTopics(false);
     }
@@ -148,7 +155,14 @@ export function AdminDashboard() {
         }),
       });
 
-      if (!response.ok) throw new Error('API request failed');
+      if (!response.ok) {
+        let errMsg = 'API request failed';
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errMsg;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const data = await response.json();
       
       setGeneratedDraft((prev: any) => ({
@@ -168,7 +182,7 @@ export function AdminDashboard() {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // New Post Form State
   const [newPost, setNewPost] = useState({
-    title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: ''
+    title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '', readTime: '5'
   });
 
   useEffect(() => {
@@ -596,7 +610,8 @@ export function AdminDashboard() {
       authorName: post.author.name,
       authorRole: post.author.role,
       authorAvatar: post.author.avatar,
-      imageUrl: post.imageUrl
+      imageUrl: post.imageUrl,
+      readTime: String(post.readTime || Math.max(1, Math.ceil(post.content.join('\n\n').split(' ').length / 200)))
     });
     setEditingPostId(post.id);
     setShowCreateModal(true);
@@ -605,7 +620,7 @@ export function AdminDashboard() {
   const closeCreateModal = () => {
     setShowCreateModal(false);
     setEditingPostId(null);
-    setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
+    setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '', readTime: '5' });
   };
 
   const deletePost = async (id: string) => {
@@ -633,6 +648,7 @@ export function AdminDashboard() {
           excerpt: newPost.excerpt,
           content: newPost.content.split('\n\n'),
           categoryId: newPost.categoryId as CategoryId,
+          readTime: parseInt(newPost.readTime, 10) || Math.max(1, Math.ceil(newPost.content.split(' ').length / 200)),
         };
         try {
           await setDoc(doc(db, 'articles', editingPostId), updatedPost, { merge: true });
@@ -641,7 +657,7 @@ export function AdminDashboard() {
           setPosts(newPosts);
           setShowCreateModal(false);
           setEditingPostId(null);
-          setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
+          setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '', readTime: '5' });
         } catch (err) {
           console.error(err);
           handleFirestoreError(err, OperationType.UPDATE, `articles/${editingPostId}`);
@@ -664,7 +680,7 @@ export function AdminDashboard() {
         role: newPost.authorRole
       },
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      readTime: Math.max(1, Math.ceil(newPost.content.split(' ').length / 200)),
+      readTime: parseInt(newPost.readTime, 10) || Math.max(1, Math.ceil(newPost.content.split(' ').length / 200)),
       imageUrl: newPost.imageUrl || 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=1200',
       featured: false,
       trending: false,
@@ -674,7 +690,7 @@ export function AdminDashboard() {
       await setDoc(doc(db, 'articles', id), fullPost);
       setPosts([fullPost, ...posts]);
       setShowCreateModal(false);
-      setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '' });
+      setNewPost({ title: '', excerpt: '', content: '', categoryId: 'ai', authorName: 'Peter Damiano', authorRole: 'AI Editor & Product Architect', authorAvatar: 'https://i.ibb.co/cXpLmLVC/20260516-210805.jpg', imageUrl: '', readTime: '5' });
     } catch (err) {
       console.error('Error creating post', err);
       handleFirestoreError(err, OperationType.WRITE, `articles/${id}`);
@@ -1279,7 +1295,7 @@ export function AdminDashboard() {
                         <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all duration-300 ${aiForm.imageType === 'ai' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10' : 'border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/40 hover:bg-gray-100 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400'}`}>
                           <input type="radio" name="imageType" value="ai" checked={aiForm.imageType === 'ai'} onChange={() => setAiForm({...aiForm, imageType: 'ai'})} className="text-indigo-600 focus:ring-indigo-500 mix-blend-multiply dark:mix-blend-normal" />
                           <div>
-                            <span className="block font-semibold text-sm text-gray-900 dark:text-white">Custom Imagen 4.0 Art</span>
+                            <span className="block font-semibold text-sm text-gray-900 dark:text-white">Custom Pollinations AI Art</span>
                             <span className="block text-xs text-gray-500 mt-0.5">Unique generative AI designs tailored to topic</span>
                           </div>
                         </label>
@@ -1335,7 +1351,7 @@ export function AdminDashboard() {
                       </div>
                       <div className="space-y-2 text-xs text-amber-700 dark:text-amber-300/90 leading-relaxed font-sans font-medium">
                         <p>
-                          The high-fidelity model <strong>gemini-2.5-flash-image</strong> returned a <code>429: Quota Exceeded</code> error. Large-scale image generation API requests typically require a premium, pay-as-you-go billing setup with Google AI Studio.
+                          The high-fidelity model <strong>Pollinations AI</strong> returned a transitory or quota warning.
                         </p>
                         <p>
                           ⚡ <strong>No Action Required!</strong> Oinone's smart publishing engine has seamlessly activated its multi-agent stock photography system. We have automatically curated gorgeous, high-resolution matching photography from our premium Unsplash collection, fully styled and matching your chosen category. You can select your favorite below!
@@ -1809,6 +1825,10 @@ export function AdminDashboard() {
                         </select>
                       </div>
                       <div>
+                        <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Read Time Estimate (minutes)</label>
+                        <input type="number" min="1" required value={newPost.readTime} onChange={e => setNewPost({...newPost, readTime: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                      </div>
+                      <div>
                         <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Précis / Article Excerpt</label>
                         <textarea required rows={2} value={newPost.excerpt} onChange={e => setNewPost({...newPost, excerpt: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-300/30 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/25 transition-all outline-none resize-none"></textarea>
                       </div>
@@ -2048,7 +2068,7 @@ export function AdminDashboard() {
 
                 <div className="bg-gray-50 dark:bg-[#060610]/60 p-4 rounded-xl border border-gray-100 dark:border-indigo-900/30">
                   <p className="text-[10px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-bold">Image generation Engine</p>
-                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">Imagen 4.0 Pro</p>
+                  <p className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">Pollinations AI</p>
                   <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">High contrast premium resolution</p>
                 </div>
               </div>

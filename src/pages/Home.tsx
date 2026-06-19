@@ -12,7 +12,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { optimizeImageUrl } from '../lib/utils';
 
 export function Home() {
-  const { posts, loading, getFeaturedPosts, getTrendingPosts, promos } = useBlog();
+  const { 
+    posts, 
+    loading, 
+    getFeaturedPosts, 
+    getTrendingPosts, 
+    promos,
+    preferredCategories,
+    isPersonalizedFilterActive,
+    streak
+  } = useBlog();
   const feedPromo = promos?.home_grid_ad_card;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [featuredOffer, setFeaturedOffer] = useState<Offer | null>(null);
@@ -23,65 +32,6 @@ export function Home() {
   const [visibleCount, setVisibleCount] = useState<number>(6);
   const navigate = useNavigate();
   const incrementedOfferRef = useRef<Set<string>>(new Set());
-
-  // Personalization fields for Finance, Technology, MMO, AI categories
-  const [preferredCategories, setPreferredCategories] = useState<string[]>(() => {
-    try {
-      const cached = localStorage.getItem('oinone_preferred_categories');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [isPersonalizedFilterActive, setIsPersonalizedFilterActive] = useState<boolean>(true);
-  const [streak, setStreak] = useState<number>(0);
-
-  // Daily learning streak computation
-  useEffect(() => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const lastVisit = localStorage.getItem('oinone_last_visit');
-      const currentStreak = localStorage.getItem('oinone_streak');
-      let newStreak = currentStreak ? parseInt(currentStreak, 10) : 0;
-
-      if (!lastVisit) {
-        newStreak = 1;
-        localStorage.setItem('oinone_last_visit', today);
-        localStorage.setItem('oinone_streak', '1');
-      } else if (lastVisit !== today) {
-        const lastVisitDate = new Date(lastVisit);
-        const todayDate = new Date(today);
-        const diffTime = Math.abs(todayDate.getTime() - lastVisitDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays <= 1) {
-          newStreak += 1;
-        } else {
-          newStreak = 1; // broken streak, reset
-        }
-        localStorage.setItem('oinone_last_visit', today);
-        localStorage.setItem('oinone_streak', newStreak.toString());
-      }
-      setStreak(newStreak || 1);
-    } catch (err) {
-      console.warn('[Streak Loader Error]:', err);
-    }
-  }, []);
-
-  const handleTogglePreference = (categoryId: string) => {
-    let updated: string[];
-    if (preferredCategories.includes(categoryId)) {
-      updated = preferredCategories.filter(id => id !== categoryId);
-    } else {
-      updated = [...preferredCategories, categoryId];
-    }
-    setPreferredCategories(updated);
-    try {
-      localStorage.setItem('oinone_preferred_categories', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   useEffect(() => {
     setVisibleCount(6);
@@ -398,89 +348,7 @@ export function Home() {
               </section>
             )}
 
-            {/* PERSONALIZATION HUB */}
-            <section className="p-8 rounded-[2.5rem] bg-gradient-to-br from-[#121216] via-[#16161c] to-[#121216] border border-white/5 relative overflow-hidden shadow-2xl">
-              {/* Background ambient light */}
-              <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/15 blur-[80px] rounded-full pointer-events-none" />
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/15 blur-[80px] rounded-full pointer-events-none" />
-              
-              <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-                <div className="space-y-3 max-w-xl text-left">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-                    <SlidersHorizontal className="w-3.5 h-3.5" /> PERSONALIZED DISCOVERY
-                  </div>
-                  <h2 className="text-2xl md:text-3xl font-display font-black text-white tracking-tight">
-                    Tailor Oinone to Your Ambitions
-                  </h2>
-                  <p className="text-gray-400 text-sm font-medium leading-relaxed">
-                    Select your preferred categories to dynamically prioritize the most relevant high-value insights, trends, and market analysis at the top of your feed.
-                  </p>
-                  
-                  {/* Streak and Stats Display to encourage daily visits */}
-                  <div className="flex flex-wrap items-center gap-4 pt-2">
-                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-2xl text-amber-400 text-xs font-bold animate-pulse">
-                      <Flame className="w-4 h-4 text-amber-500" />
-                      Daily Learning Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
-                    </div>
-                    <div className="text-[11px] text-gray-500 font-bold uppercase tracking-widest font-mono">
-                      Visit daily to grow your knowledge streak! 📈
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Interactive Toggles */}
-                <div className="w-full lg:w-auto space-y-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-gray-400 text-left lg:text-right">
-                    My Preferred Categories:
-                  </div>
-                  <div className="flex flex-wrap gap-2.5 justify-start lg:justify-end">
-                    {[
-                      { id: 'finance', name: 'Finance', icon: Coins },
-                      { id: 'technology', name: 'Technology', icon: Cpu },
-                      { id: 'mmo', name: 'Make Money Online', icon: Zap },
-                      { id: 'ai', name: 'AI', icon: Sparkles },
-                    ].map((pref) => {
-                      const PrefIcon = pref.icon;
-                      const isSelected = preferredCategories.includes(pref.id);
-                      return (
-                        <button
-                          key={pref.id}
-                          onClick={() => handleTogglePreference(pref.id)}
-                          className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 relative cursor-pointer border ${
-                            isSelected
-                              ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-lg shadow-cyan-500/10'
-                              : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                          }`}
-                        >
-                          <PrefIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`} />
-                          <span>{pref.name}</span>
-                          {isSelected && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  
-                  {preferredCategories.length > 0 && (
-                    <div className="flex items-center justify-start lg:justify-end gap-3 pt-2">
-                      <label className="relative inline-flex items-center cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={isPersonalizedFilterActive}
-                          onChange={(e) => setIsPersonalizedFilterActive(e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-cyan-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-cyan-500/20" />
-                        <span className="ml-2 text-xs font-bold text-gray-400">
-                          {isPersonalizedFilterActive ? '⚡ Prioritize Preferred ON' : 'Prioritize Preferred OFF'}
-                        </span>
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
+
 
             {/* LATEST ARTICLES (NOW PLACED AT THE VERY TOP) */}
             <section className="space-y-8 animate-fade-in" id="articles-feed">
