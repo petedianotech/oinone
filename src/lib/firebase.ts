@@ -6,7 +6,9 @@ import {
   persistentLocalCache, 
   persistentMultipleTabManager, 
   doc, 
-  getDocFromServer 
+  getDocFromServer,
+  collection,
+  addDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -88,9 +90,19 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-/**
- * Verifies active connectivity to Firestore database on startup
- */
+export async function logSystemError(message: string, context?: any) {
+  try {
+    const errorLogRef = collection(db, 'system_errors');
+    await addDoc(errorLogRef, {
+      message: String(message),
+      context: typeof context === 'string' ? context : JSON.stringify(context || {}),
+      timestamp: new Date().toISOString(),
+      userId: auth.currentUser?.uid || 'anonymous'
+    });
+  } catch (err) {
+    console.error('Failed to log system error to centralized console', err);
+  }
+}
 async function testConnection() {
   try {
     // Testing path

@@ -3,8 +3,8 @@ const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v)
 const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { db, auth, OperationType, handleFirestoreError } from '../../lib/firebase';
-import { collection, getDocs, doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { db, auth, OperationType, handleFirestoreError, logSystemError } from '../../lib/firebase';
+import { collection, getDocs, doc, deleteDoc, setDoc, query, orderBy, limit } from 'firebase/firestore';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -21,8 +21,9 @@ export function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'ads-manager' | 'finance-sector' | 'technology-hub' | 'ai-systems'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'posts' | 'ai-writer' | 'offers' | 'ads-manager' | 'finance-sector' | 'technology-hub' | 'ai-systems' | 'system-errors'>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [systemErrors, setSystemErrors] = useState<any[]>([]);
   
   // Custom AI settings for systems tab
   const [aiSettings, setAiSettings] = useState({
@@ -133,6 +134,7 @@ export function AdminDashboard() {
       setIdeatedTopics(data.topics || []);
     } catch (err: any) {
       console.error(err);
+      logSystemError(err.message || 'Failed to ideate topics. Make sure server is running.', { function: 'handleIdeateTopics' });
       alert(err.message || 'Failed to ideate topics. Make sure server is running.');
     } finally {
       setIsIdeatingTopics(false);
@@ -173,6 +175,7 @@ export function AdminDashboard() {
       }));
     } catch (err: any) {
       console.error(err);
+      logSystemError(`Failed to fix SEO: ${err.message || err}`, { function: 'handleFixSEO' });
       alert(`Failed to fix SEO: ${err.message}`);
     } finally {
       setIsFixingSEO(false);
@@ -289,6 +292,24 @@ export function AdminDashboard() {
       }
     };
   }, []);
+
+  const fetchSystemErrors = async () => {
+    try {
+      const logsRef = collection(db, 'system_errors');
+      const q = query(logsRef, orderBy('timestamp', 'desc'), limit(50));
+      const snaps = await getDocs(q);
+      const errorsList = snaps.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setSystemErrors(errorsList);
+    } catch (err) {
+      console.error('Failed to fetch system errors', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'system-errors' && isAdmin) {
+      fetchSystemErrors();
+    }
+  }, [activeTab, isAdmin]);
 
   const fetchAdminData = async () => {
     try {
@@ -471,6 +492,7 @@ export function AdminDashboard() {
       setActiveCoverIndex(0);
     } catch (err: any) {
       console.error(err);
+      logSystemError(`Error generating AI content: ${err.message || err}`, { function: 'handleGenerateAI', form: aiForm });
       alert(`Error generating AI content:\n\n${err.message || err}`);
     } finally {
       setIsGenerating(false);
@@ -894,6 +916,13 @@ export function AdminDashboard() {
           </button>
           <button onClick={() => { setActiveTab('ai-systems'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'ai-systems' ? 'bg-indigo-500/20 text-purple-300 border-l-2 border-purple-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
              <span className="w-2 h-2 rounded-full bg-purple-400" /> AI Systems
+          </button>
+          
+          <div className="pt-6 mt-6 border-t border-white/10 uppercase text-[10px] tracking-widest font-bold text-rose-200/50 mb-2 px-2">
+            Monitoring
+          </div>
+          <button onClick={() => { setActiveTab('system-errors'); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer ${activeTab === 'system-errors' ? 'bg-rose-500/20 text-rose-300 border-l-2 border-rose-400' : 'text-gray-400 hover:bg-white/5 hover:text-rose-400'}`}>
+             <span className="w-2 h-2 rounded-full bg-rose-500 animate-[pulse_2s_ease-in-out_infinite]" /> Error Logs {systemErrors.length > 0 && <span className="ml-auto bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full">{systemErrors.length}</span>}
           </button>
 
 
@@ -2216,6 +2245,61 @@ export function AdminDashboard() {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {activeTab === 'system-errors' && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl max-w-full">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">System Error Logs</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review critical system failures and exceptions collected from all clients globally.</p>
+            </div>
+            <button onClick={fetchSystemErrors} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
+              Refresh Logs
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-[#0a0a0c] border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+            {systemErrors.length === 0 ? (
+              <div className="p-12 text-center text-gray-400">
+                <p>No system errors recorded recently. Your app is running smoothly! 🎉</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-white/5">
+                {systemErrors.map((errItem) => (
+                  <div key={errItem.id} className="p-4 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                            Error
+                          </span>
+                          <span className="text-xs text-gray-400 font-mono">
+                            {new Date(errItem.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-200 break-words mt-2">
+                          {errItem.message}
+                        </h4>
+                        {errItem.context && errItem.context !== "{}" && (
+                          <pre className="mt-2 text-[10px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-black/50 p-2 rounded border border-gray-100 dark:border-white/5 overflow-x-auto">
+                            {errItem.context}
+                          </pre>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-xs text-gray-400">
+                        <span className="block mb-1">User ID:</span>
+                        <code className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300">
+                          {errItem.userId === 'anonymous' ? 'Anon' : errItem.userId.slice(0,8)+'...'}
+                        </code>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </motion.div>
       )}
 
       {/* Ads Modal */}
