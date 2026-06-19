@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -233,6 +233,11 @@ Formatting Guidelines:
 - Meta Description: Provide an engaging meta description written at the very top, formatted as a <p className="text-gray-500 italic mb-6"> or <blockquote>. Do NOT include the label "Meta Description" or parenthetical labels like "(Meta Description)". Simply output the description text directly inside the tags.
 - Subheaders: Structure the body with clear, compelling <h2> and <h3> tags.
 - Detailed Sections: Write with high density of value, bullet points, and clean lists.
+- Inline Articles Images: To make the article visual, immersive, and pass all SEO scanners, insert exactly 1 or 2 elegant, contextual inline images (<img> tags) inside the body of the article between paragraphs.
+  Use the free, high-fidelity Pollinations AI API as the src attribute. The format must be EXACTLY:
+  https://image.pollinations.ai/p/[one-sentence-descriptive-scene-keywords-separated-by-plus-signs]?width=800&height=450&nologo=true&seed=[random-5-digit-number]
+  (e.g., <img src="https://image.pollinations.ai/p/advanced+neural+network+with+shimmering+blue+lines?width=800&height=450&nologo=true&seed=48201" alt="Detailed SEO descriptive phrase with keyword: ${keyword}" class="rounded-2xl my-8 w-full object-cover max-h-96 shadow-lg border border-white/5" />)
+  Make sure alt attribute is descriptive and includes target SEO terms!
 - FAQ Section: Include a concise, high-value FAQ section towards the end of the article using <h2> and <h3>.
 - Do NOT use markdown code blocks or backticks (\`\`\`html) around the output. Return raw HTML directly.
 
@@ -299,38 +304,24 @@ SUMMARY: [your simple English summary]`;
         }
       }
     } else {
-      // imageType === 'ai': generate images in parallel to solve slow response times
+      // imageType === 'ai': generate high-fidelity, creative AI images using Pollinations AI.
+      // This is infinitely scalable, completely free, fast (0-second server latency), and works on all credentials.
       const promptsToRun = imagePrompts.slice(0, 3);
       if (promptsToRun.length === 0) {
-        promptsToRun.push(`A realistic, professional hero image representing: ${topic}`);
+        promptsToRun.push(`A futuristic, modern professional tech blog cover for: ${topic}`);
       }
 
-      const imagePromises = promptsToRun.map(async (prompt) => {
-        try {
-          const imageRes = await getAiClient().models.generateImages({
-            model: 'imagen-4.0-generate-001',
-            prompt: prompt,
-            config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/jpeg',
-              aspectRatio: '16:9'
-            }
-          });
-          if (imageRes?.generatedImages?.[0]?.image?.imageBytes) {
-            const base64EncodeString = imageRes.generatedImages[0].image.imageBytes;
-            return `data:image/jpeg;base64,${base64EncodeString}`;
-          }
-          return null;
-        } catch (err) {
-          console.error("Image generation failed for prompt:", prompt, err);
-          return null;
-        }
+      console.log(`[Pollinations AI] Generating image URLs for prompts:`, promptsToRun);
+      generatedImages = promptsToRun.map((prompt) => {
+        // Build a highly-detailed visual prompt for Pollinations AI with high aesthetic parameters
+        const cleanPrompt = prompt.trim()
+          .replace(/["']/g, '')
+          .replace(/\s+/g, '+');
+        const seedValue = Math.floor(Math.random() * 100000);
+        return `https://image.pollinations.ai/p/${encodeURIComponent(cleanPrompt)}?width=1024&height=576&nologo=true&seed=${seedValue}`;
       });
 
-      const results = await Promise.all(imagePromises);
-      generatedImages = results.filter((img): img is string => img !== null);
-
-      // Complement with high-quality stock photography if some AI images failed to generate
+      // Ensure we fill up to 3 images if we have less prompts
       if (generatedImages.length < 3) {
         const gallery = STOCK_GALLERY[catId] || STOCK_GALLERY.default;
         const shuffled = [...gallery].sort(() => 0.5 - Math.random());
@@ -353,7 +344,8 @@ SUMMARY: [your simple English summary]`;
       researchSummary: researchData,
       images: generatedImages,
       author: "Peter Damiano",
-      seoKeyword: keyword
+      seoKeyword: keyword,
+      imageErrors: (res as any).imageErrors
     });
 
   } catch (error: any) {
@@ -366,16 +358,198 @@ SUMMARY: [your simple English summary]`;
   }
 });
 
-// SEO & Open Graph dynamic metadata extractor
-async function getMetadataForRoute(reqUrl: string): Promise<{ title: string; description: string; url: string; imageUrl: string }> {
+// New Endpoint: Ideate Topics
+app.post('/api/ai/ideate-topics', async (req, res) => {
+  try {
+    const { category, keyword, targetAudience, description } = req.body;
+    let prompt = `Act as an expert SEO and content strategist. I need 5 compelling blog post topics/titles.
+Here is some context:
+- Category: ${category || 'General'}
+- Target Keyword: ${keyword || 'N/A'}
+- Target Audience: ${targetAudience || 'General Audience'}
+- Initial Idea/Description: ${description || 'N/A'}
+
+Provide ONLY a numbered list of exactly 5 creative, click-worthy, and SEO-optimized blog post topics. Do NOT include any intro or outro text. Format exactly like:
+1. First Topic
+2. Second Topic
+...`;
+
+    const aiResponse = await getAiClient().models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: {
+        role: 'user',
+        parts: [{ text: prompt }]
+      }
+    });
+
+    const responseText = aiResponse.text || '';
+    const topics = responseText
+      .split('\n')
+      .map(line => line.replace(/^\d+\.\s*/, '').trim())
+      .filter(line => line.length > 5 && line.length < 150)
+      .slice(0, 5);
+
+    res.json({ topics: topics.length > 0 ? topics : ['Failed to extract topics'] });
+  } catch (error: any) {
+    console.error("AI Ideate Topics Error:", error);
+    res.status(500).json({ error: error.message || 'Failed to ideate topics' });
+  }
+});
+
+// New Endpoint: Fix SEO
+app.post('/api/ai/fix-seo', async (req, res) => {
+  try {
+    const { title, content, summary, keyword, issues } = req.body;
+    
+    const prompt = `You are an elite, world-class SEO specialist, copywriter, and article editor. Your job is to resolve 100% of the SEO warnings and errors in the provided article details, absolutely ensuring the final SEO score is 90+ out of 100 on the scanner.
+
+TARGET KEYWORD: "${keyword || 'none'}"
+
+=== CURRENT DETAILS ===
+Current Title: "${title}"
+Current Summary (Meta Description): "${summary}"
+Current Content (HTML):
+${content}
+
+=== DETECTED ISSUES TO RESOLVE ===
+${issues.map((i: string) => `- ${i}`).join('\n')}
+
+=== MANDATORY AUTO-FIX ACTIONS ===
+1. TITLE OPTIMIZATION:
+   - Must be between 30 and 60 characters long (optimize for 48-58 characters for perfect desktop and mobile visibility).
+   - MUST contain the target keyword (case-insensitive). No exceptions!
+2. SUMMARY / META DESCRIPTION OPTIMIZATION:
+   - Must be between 50 and 160 characters long.
+   - Summarize the core value proposition of the article and naturally include the target keyword in it!
+3. CONTENT EXPANSION & STRUCTURING:
+   - MUST be at least 320 words. If the current content is thin (such as 1 word or an empty draft), write a comprehensive, extremely detailed, professional, high-quality blog article on the topic of "${title}".
+   - MUST include the target keyword "${keyword}" naturally in the content body multiple times (aim for 2-4 occurrences).
+   - MUST use structured subheadings (HTML tags like <h2> and <h3>) to separate themes and break down the article logically.
+4. IMAGES AND ALT TEXTS:
+   - Every single <img> tag in the HTML must have a descriptive, non-empty alt="..." attribute (never alt="" or alt='' or missing alt).
+   - If there are NO images in the content body, you MUST insert at least one high-quality, professional illustrative image. Use a professional Pollinations AI image URL:
+     https://image.pollinations.ai/p/[one-sentence-descriptive-scene-keywords-separated-by-plus-signs]?width=800&height=450&nologo=true&seed=[random-5-digit-number]
+     (e.g., <img src="https://image.pollinations.ai/p/workspace+innovation+with+glowing+holograms?width=800&height=450&nologo=true&seed=24589" alt="Detailed SEO descriptive phrase with keyword: ${keyword}" class="rounded-2xl my-6 w-full object-cover max-h-96 shadow-lg border border-white/5" />)
+     Ensure the <img> has nice responsive classes and a highly descriptive, non-empty alt attribute containing related keywords to boost SEO metrics to 90+!
+
+Ensure your entire generated HTML content is professional, elegant, and matches the premium, high-contrast, tech-savvy brand voice of Oinone.`;
+
+    const aiResponse = await getAiClient().models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: {
+              type: Type.STRING,
+              description: "The optimized, highly engaging SEO title containing the keyword, between 30 and 60 characters long."
+            },
+            summary: {
+              type: Type.STRING,
+              description: "The optimized meta description containing the keyword, between 50 and 160 characters long."
+            },
+            content: {
+              type: Type.STRING,
+              description: "The full, high-depth HTML content of the article (with <p> tags, <h2>/<h3> headers, lists, code snippets or blockquotes, and <img> tags with descriptive alt text) meeting all word counts (>320 words)."
+            }
+          },
+          required: ["title", "summary", "content"]
+        }
+      }
+    });
+
+    const rawText = (aiResponse.text || '').trim();
+    
+    try {
+      const parsed = JSON.parse(rawText);
+      res.json(parsed);
+    } catch (parseError) {
+      console.error("JSON parse failed. Raw Text was:", rawText);
+      res.status(500).json({ error: "Failed to parse AI response as JSON." });
+    }
+  } catch (error: any) {
+    console.error("AI Fix SEO Error:", error.message || error);
+    res.status(500).json({ error: error.message || 'Failed to fix SEO' });
+  }
+});
+
+// XML Sitemap Endpoint
+app.get('/sitemap.xml', async (req, res) => {
+  const host = "https://oinone.co";
+  const projectId = "oin-one";
+  const databaseId = "ai-studio-ac2d3137-06fd-4d06-b18c-691ce92bd1ef";
+  
+  // Base URLs
+  const urls = [
+    { loc: `${host}/`, changefreq: 'daily', priority: 1.0 },
+    { loc: `${host}/home`, changefreq: 'daily', priority: 0.9 },
+    { loc: `${host}/offers-vault`, changefreq: 'weekly', priority: 0.8 },
+    { loc: `${host}/about`, changefreq: 'monthly', priority: 0.7 },
+  ];
+
+  try {
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${databaseId}/documents/articles`;
+    const response = await fetch(firestoreUrl);
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.documents) {
+        data.documents.forEach((doc: any) => {
+          const docNameParts = doc.name.split('/');
+          const docId = docNameParts[docNameParts.length - 1];
+          const updateTime = doc.updateTime || new Date().toISOString();
+          
+          urls.push({
+            loc: `${host}/article/${docId}`,
+            changefreq: 'weekly',
+            priority: 0.8
+          });
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to fetch articles for sitemap", err);
+  }
+
+  const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map(url => `  <url>
+    <loc>${url.loc}</loc>
+    <changefreq>${url.changefreq}</changefreq>
+    <priority>${url.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+  res.header('Content-Type', 'application/xml');
+  res.status(200).send(sitemapXml);
+});
+
+// Advanced SEO & Open Graph dynamic metadata extractor
+export interface PageMetadata {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+  type?: 'website' | 'article';
+  publishedTime?: string;
+  author?: string;
+  keywords?: string[];
+  articleSection?: string; // e.g. Finance, Technology, MMO, AI
+}
+
+async function getMetadataForRoute(reqUrl: string): Promise<PageMetadata> {
   const host = "https://oinone.co"; // Canonical production domain
   const canonicalUrl = `${host}${reqUrl}`;
   
-  const defaultMeta = {
+  const defaultMeta: PageMetadata = {
     title: "Oinone - Finance, Tech, AI & Business by Peter Damiano",
     description: "Discover premium blog posts and deep-dives on Finance, Technology, AI, and Online Business compiled by Peter Damiano.",
     url: canonicalUrl,
-    imageUrl: `${host}/oinone_blog_icon.jpg`
+    imageUrl: `${host}/oinone_blog_icon.jpg`,
+    type: 'website',
+    keywords: ["finance", "technology", "make money online", "AI", "business insights", "Peter Damiano"]
   };
 
   try {
@@ -400,14 +574,30 @@ async function getMetadataForRoute(reqUrl: string): Promise<{ title: string; des
         const fields = doc.fields || {};
         
         const title = fields.title?.stringValue || defaultMeta.title;
-        const excerpt = fields.excerpt?.stringValue || defaultMeta.description;
+        const excerpt = fields.summary?.stringValue || fields.excerpt?.stringValue || defaultMeta.description;
         const imageUrl = fields.imageUrl?.stringValue || defaultMeta.imageUrl;
+        const author = fields.author?.stringValue || "Peter Damiano";
+        const publishedTime = fields.date?.stringValue;
+        const categoryId = fields.categoryId?.stringValue || "technology";
+
+        const categoryKeywords = {
+          'finance': ["finance", "investment", "markets", "stocks", "wealth"],
+          'technology': ["technology", "software", "tech trends", "innovation"],
+          'ai': ["artificial intelligence", "AI", "machine learning", "automation", "tech"],
+          'mmo': ["make money online", "side hustle", "passive income", "entrepreneurship", "business"]
+        };
+        const keywords = fields.seoKeyword?.stringValue ? [fields.seoKeyword.stringValue] : (categoryKeywords[categoryId as keyof typeof categoryKeywords] || defaultMeta.keywords);
 
         return {
           title: `${title} | Oinone`,
           description: excerpt,
           url: canonicalUrl,
-          imageUrl: imageUrl
+          imageUrl: imageUrl,
+          type: 'article',
+          author,
+          publishedTime,
+          keywords,
+          articleSection: categoryId
         };
       }
     }
@@ -416,31 +606,29 @@ async function getMetadataForRoute(reqUrl: string): Promise<{ title: string; des
     const cleanUrl = reqUrl.split("?")[0];
     if (cleanUrl === "/" || cleanUrl === "/home" || cleanUrl === "") {
       return {
+        ...defaultMeta,
         title: "Oinone - Premium Tech, Finance & Business Insights",
         description: "Stay ahead of the curve with deeply-researched analyses and insights on technologies, financial sectors, online businesses, and AI systems created by Peter Damiano.",
-        url: canonicalUrl,
-        imageUrl: `${host}/oinone_blog_icon.jpg`
       };
     } else if (cleanUrl === "/offers" || cleanUrl === "/offers-vault") {
       return {
+        ...defaultMeta,
         title: "Offers Vault - High-Tier Affiliate CPA Campaigns | Oinone",
         description: "Explore highly-vetted premium business tools, financial campaigns, and dynamic online monetization systems curated for performance.",
-        url: canonicalUrl,
-        imageUrl: `${host}/oinone_blog_icon.jpg`
+        keywords: ["affiliate campaigns", "CPA offers", "make money online", "business tools", "monetization systems"]
       };
     } else if (cleanUrl === "/about") {
       return {
+        ...defaultMeta,
         title: "About Peter Damiano & Oinone - AI-Powered Professional Journal",
         description: "Learn more about the vision behind Oinone. Multi-faceted journalism exploring high-growth sectors, technology integration, and automated content generation.",
-        url: canonicalUrl,
-        imageUrl: `${host}/oinone_blog_icon.jpg`
+        keywords: ["Peter Damiano", "Oinone vision", "tech journalism", "finance blog", "AI integration"]
       };
     } else if (cleanUrl === "/admin") {
       return {
+        ...defaultMeta,
         title: "Admin Dashboard - Content & Asset Operations | Oinone",
         description: "Secure management panel for drafting articles, configuring advertisements, and monitoring affiliate campaigns.",
-        url: canonicalUrl,
-        imageUrl: `${host}/oinone_blog_icon.jpg`
       };
     }
   } catch (err) {
@@ -453,9 +641,9 @@ async function getMetadataForRoute(reqUrl: string): Promise<{ title: string; des
 // Helper to inject HTML safe Open Graph + Twitter Meta Tags
 function injectMetaTags(
   template: string,
-  metadata: { title: string; description: string; url: string; imageUrl: string }
+  metadata: PageMetadata
 ): string {
-  const { title, description, url, imageUrl } = metadata;
+  const { title, description, url, imageUrl, type, author, publishedTime, keywords, articleSection } = metadata;
   
   const escapeHtml = (str: string) => {
     return str
@@ -475,20 +663,93 @@ function injectMetaTags(
 
   // Replace primary page title and description
   result = result.replace(/<title>.*?<\/title>/gi, `<title>${escapedTitle}</title>`);
-  result = result.replace(/<meta name="title" content=".*?"\s*\/?>/gi, `<meta name="title" content="${escapedTitle}" />`);
-  result = result.replace(/<meta name="description" content=".*?"\s*\/?>/gi, `<meta name="description" content="${escapedDescription}" />`);
+  
+  // Create our advanced meta tags string
+  let advancedMetaTags = `
+    <!-- Standard Meta -->
+    <meta name="title" content="${escapedTitle}" />
+    <meta name="description" content="${escapedDescription}" />
+    ${keywords?.length ? `<meta name="keywords" content="${escapeHtml(keywords.join(", "))}" />` : ''}
+    ${author ? `<meta name="author" content="${escapeHtml(author)}" />` : ''}
 
-  // Replace Open Graph metadata
-  result = result.replace(/<meta property="og:url" content=".*?"\s*\/?>/gi, `<meta property="og:url" content="${escapedUrl}" />`);
-  result = result.replace(/<meta property="og:title" content=".*?"\s*\/?>/gi, `<meta property="og:title" content="${escapedTitle}" />`);
-  result = result.replace(/<meta property="og:description" content=".*?"\s*\/?>/gi, `<meta property="og:description" content="${escapedDescription}" />`);
-  result = result.replace(/<meta property="og:image" content=".*?"\s*\/?>/gi, `<meta property="og:image" content="${escapedImageUrl}" />`);
+    <!-- Open Graph -->
+    <meta property="og:type" content="${type || 'website'}" />
+    <meta property="og:url" content="${escapedUrl}" />
+    <meta property="og:title" content="${escapedTitle}" />
+    <meta property="og:description" content="${escapedDescription}" />
+    <meta property="og:image" content="${escapedImageUrl}" />
+    <meta property="og:site_name" content="Oinone" />
+    ${type === 'article' && publishedTime ? `<meta property="article:published_time" content="${escapeHtml(publishedTime)}" />` : ''}
+    ${type === 'article' && author ? `<meta property="article:author" content="${escapeHtml(author)}" />` : ''}
+    ${type === 'article' && articleSection ? `<meta property="article:section" content="${escapeHtml(articleSection)}" />` : ''}
+    ${type === 'article' && keywords ? keywords.map(tag => `<meta property="article:tag" content="${escapeHtml(tag)}" />`).join('\n    ') : ''}
 
-  // Replace Twitter metadata
-  result = result.replace(/<meta property="twitter:url" content=".*?"\s*\/?>/gi, `<meta property="twitter:url" content="${escapedUrl}" />`);
-  result = result.replace(/<meta property="twitter:title" content=".*?"\s*\/?>/gi, `<meta property="twitter:title" content="${escapedTitle}" />`);
-  result = result.replace(/<meta property="twitter:description" content=".*?"\s*\/?>/gi, `<meta property="twitter:description" content="${escapedDescription}" />`);
-  result = result.replace(/<meta property="twitter:image" content=".*?"\s*\/?>/gi, `<meta property="twitter:image" content="${escapedImageUrl}" />`);
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="${escapedUrl}" />
+    <meta property="twitter:title" content="${escapedTitle}" />
+    <meta property="twitter:description" content="${escapedDescription}" />
+    <meta property="twitter:image" content="${escapedImageUrl}" />
+  `;
+
+  // JSON-LD Structured Data
+  let structuredData: any;
+  if (type === 'article') {
+    structuredData = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": escapedUrl
+      },
+      "headline": title,
+      "description": description,
+      "image": imageUrl,
+      "author": {
+        "@type": "Person",
+        "name": author || "Peter Damiano",
+        "url": "https://oinone.co/about"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Oinone",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://oinone.co/oinone_blog_icon.jpg"
+        }
+      },
+      "datePublished": publishedTime || new Date().toISOString()
+    };
+  } else {
+    structuredData = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Oinone",
+      "url": "https://oinone.co",
+      "description": description,
+      "author": {
+        "@type": "Person",
+        "name": "Peter Damiano"
+      }
+    };
+  }
+
+  advancedMetaTags += `
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      ${JSON.stringify(structuredData)}
+    </script>
+  `;
+
+  // Provide a clean slate by removing existing standard dummy tags if they exist
+  result = result.replace(/<meta name="title" content=".*?"\s*\/?>/gi, '');
+  result = result.replace(/<meta name="description" content=".*?"\s*\/?>/gi, '');
+  result = result.replace(/<meta property="og:.*?="\s*\/?>/gi, '');
+  result = result.replace(/<meta property="twitter:.*?="\s*\/?>/gi, '');
+  result = result.replace(/<meta property="article:.*?="\s*\/?>/gi, '');
+
+  // Inject right before </head>
+  result = result.replace('</head>', `${advancedMetaTags}\n  </head>`);
 
   return result;
 }

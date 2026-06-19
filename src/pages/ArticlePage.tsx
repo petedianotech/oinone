@@ -14,7 +14,9 @@ import { formatDistanceToNow } from 'date-fns';
 
 export function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>();
-  const { getPost, posts, loading } = useBlog();
+  const { getPost, posts, loading, promos } = useBlog();
+  const sidebarPromo = promos?.article_sidebar_block;
+  const bottomBannerPromo = promos?.article_inline_banner;
   
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -448,29 +450,31 @@ export function ArticlePage() {
             )}
 
             {/* Sponsored Monetag Integration */}
-            <a 
-              href="https://omg10.com/4/11136040" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="block group relative rounded-3xl border border-emerald-500/30 bg-[#121216]/90 p-5 overflow-hidden transition-all duration-300 hover:border-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] text-left"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 opacity-50 group-hover:opacity-100 transition-opacity" />
-              <div className="relative z-10 space-y-3">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> SPONSOR LINK
+            {sidebarPromo && sidebarPromo.status === 'active' && (
+              <a 
+                href={sidebarPromo.linkUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="block group relative rounded-3xl border border-emerald-500/30 bg-[#121216]/90 p-5 overflow-hidden transition-all duration-300 hover:border-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] text-left"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="relative z-10 space-y-3">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {sidebarPromo.label}
+                  </div>
+                  <h4 className="font-bold text-sm text-white group-hover:text-emerald-300 transition-colors">
+                    {sidebarPromo.title}
+                  </h4>
+                  <p className="text-xs text-gray-400 leading-relaxed font-semibold">
+                    {sidebarPromo.description}
+                  </p>
+                  <div className="pt-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
+                    <span>{sidebarPromo.btnText}</span>
+                    <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </div>
-                <h4 className="font-bold text-sm text-white group-hover:text-emerald-300 transition-colors">
-                  Claim $1,500 Daily CPA Bonus AirDrop & Resources
-                </h4>
-                <p className="text-xs text-gray-400 leading-relaxed font-semibold">
-                  Access premium business systems, verified direct payment assets, and monetized passive campaigns instantly.
-                </p>
-                <div className="pt-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
-                  <span>TAP TO SECURE</span>
-                  <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            </a>
+              </a>
+            )}
             
             <div className="space-y-4">
               <span className="text-xs font-bold text-white/40 uppercase tracking-widest ml-2">Share Log</span>
@@ -569,36 +573,38 @@ export function ArticlePage() {
           </div>
 
           {/* Sponsored Ad Unit (Monetag Direct Link) */}
-          <a
-            href="https://omg10.com/4/11136040"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block mb-8 p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-black/40 to-cyan-950/40 border border-emerald-500/40 hover:border-emerald-300 transition-all duration-300 relative overflow-hidden group shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.25)] text-left"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-cyan-500/10 opacity-30 group-hover:opacity-100 transition-opacity" />
-            <div className="absolute -right-16 -top-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
-            
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 text-[10px] font-extrabold uppercase tracking-widest">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  Premium Sponsored Airdrop
+          {bottomBannerPromo && bottomBannerPromo.status === 'active' && (
+            <a
+              href={bottomBannerPromo.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mb-8 p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-black/40 to-cyan-950/40 border border-emerald-500/40 hover:border-emerald-300 transition-all duration-300 relative overflow-hidden group shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.25)] text-left"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-cyan-500/10 opacity-30 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute -right-16 -top-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
+              
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 text-[10px] font-extrabold uppercase tracking-widest">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    {bottomBannerPromo.label}
+                  </div>
+                  <h3 className="text-xl font-extrabold text-white group-hover:text-emerald-300 transition-colors leading-tight">
+                    {bottomBannerPromo.title}
+                  </h3>
+                  <p className="text-xs font-semibold text-gray-400 leading-relaxed uppercase tracking-wider">
+                    {bottomBannerPromo.description}
+                  </p>
                 </div>
-                <h3 className="text-xl font-extrabold text-white group-hover:text-emerald-300 transition-colors leading-tight">
-                  Unlock Complete Online Wealth & MMO Master Protocols
-                </h3>
-                <p className="text-xs font-semibold text-gray-400 leading-relaxed uppercase tracking-wider">
-                  Partner Resource: Instant direct rewards, verified monetization networks & premium business systems.
-                </p>
-              </div>
-              <div className="shrink-0 w-full md:w-auto">
-                <div className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25">
-                  Access Premium Offer
-                  <ExternalLink className="w-4 h-4" />
+                <div className="shrink-0 w-full md:w-auto">
+                  <div className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25">
+                    {bottomBannerPromo.btnText}
+                    <ExternalLink className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
-            </div>
-          </a>
+            </a>
+          )}
 
           <div className="prose prose-invert prose-lg prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
             {(() => {

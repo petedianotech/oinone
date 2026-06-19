@@ -12,9 +12,10 @@ interface ArticleCardProps {
   variant?: 'featured' | 'compact' | 'standard';
   className?: string;
   theme?: 'light' | 'dark'; // We force dark anyway mostly, but keep for compat
+  isPrioritized?: boolean;
 }
 
-export function ArticleCard({ post, variant = 'standard', className, theme = 'dark' }: ArticleCardProps) {
+export function ArticleCard({ post, variant = 'standard', className, theme = 'dark', isPrioritized = false }: ArticleCardProps) {
   const category = CATEGORIES[post.categoryId] || { name: post.categoryId, color: 'text-white' };
 
   if (variant === 'featured') {
@@ -31,9 +32,16 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
         </div>
         <div className="flex flex-col flex-1 p-6 relative z-10">
           <div className="flex justify-between items-center mb-4">
-            <span className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest backdrop-blur-md">
-              {category.name}
-            </span>
+            <div className="flex gap-2">
+              <span className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest backdrop-blur-md">
+                {category.name}
+              </span>
+              {isPrioritized && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-3 py-1 text-[10px] font-bold text-cyan-400 uppercase tracking-widest backdrop-blur-md animate-pulse">
+                  ★ Personalized
+                </span>
+              )}
+            </div>
             <span className="flex items-center text-xs font-semibold text-gray-400 gap-1.5">
               <Clock className="h-3.5 w-3.5" />
               {post.readTime} min read
@@ -109,6 +117,11 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
            <span className="inline-flex items-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest">
               {category.name}
            </span>
+           {isPrioritized && (
+             <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/80 backdrop-blur-md border border-cyan-400 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest shadow-md shadow-cyan-500/20">
+               ★ Prioritized
+             </span>
+           )}
         </div>
       </Link>
       <div className="flex flex-col flex-1 p-6 relative z-10">

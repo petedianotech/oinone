@@ -2,8 +2,9 @@ const safeGetItem = (k: string) => { try { return localStorage.getItem(k); } cat
 const safeSetItem = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch(e) {} };
 const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catch(e) {} };
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Post, CategoryId } from '../types';
+import { Post, CategoryId, PromoCampaign } from '../types';
 import { subscribeToArticles } from './blogService';
+import { subscribeToPromos, updatePromoCampaign, DEFAULT_PROMOS } from './promoService';
 
 interface BlogContextType {
   posts: Post[];
@@ -12,6 +13,8 @@ interface BlogContextType {
   getCategoryPosts: (categoryId: CategoryId) => Post[];
   getFeaturedPosts: () => Post[];
   getTrendingPosts: () => Post[];
+  promos: Record<PromoCampaign['id'], PromoCampaign>;
+  updatePromo: (id: PromoCampaign['id'], updates: Partial<PromoCampaign>) => Promise<void>;
 }
 
 const BlogContext = createContext<BlogContextType | undefined>(undefined);
@@ -25,6 +28,14 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return [];
     }
   });
+  const [promos, setPromos] = useState<Record<PromoCampaign['id'], PromoCampaign>>(() => {
+    try {
+      const cached = safeGetItem('oinone_cached_promos');
+      return cached ? JSON.parse(cached) : DEFAULT_PROMOS;
+    } catch {
+      return DEFAULT_PROMOS;
+    }
+  });
   const [loading, setLoading] = useState(() => {
     try {
       const cached = safeGetItem('oinone_cached_posts');
@@ -36,7 +47,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Standard real-time binding to Firestore with caching fallback
-    const unsubscribe = subscribeToArticles(
+    const unsubscribeArticles = subscribeToArticles(
       (realtimePosts) => {
         setPosts(realtimePosts);
         setLoading(false);
@@ -47,7 +58,7 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       },
       (error) => {
-        console.error('[BlogProvider Listener Error]:', error);
+        console.error('[BlogProvider articles Listener Error]:', error);
         try {
           const cached = safeGetItem('oinone_cached_posts');
           if (cached) {
@@ -58,8 +69,43 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    return () => unsubscribe();
+    // Dynamic real-time binding to Promo Campaigns
+    const unsubscribePromos = subscribeToPromos(
+      (realtimePromos) => {
+        setPromos(realtimePromos);
+        try {
+          safeSetItem('oinone_cached_promos', JSON.stringify(realtimePromos));
+        } catch (e) {
+          console.error(e);
+        }
+      },
+      (error) => {
+        console.error('[BlogProvider promos Listener Error]:', error);
+        try {
+          const cached = safeGetItem('oinone_cached_promos');
+          if (cached) {
+            setPromos(JSON.parse(cached));
+          }
+        } catch (e) {}
+      }
+    );
+
+    return () => {
+      unsubscribeArticles();
+      unsubscribePromos();
+    };
   }, []);
+
+  const updatePromo = async (id: PromoCampaign['id'], updates: Partial<PromoCampaign>) => {
+    const updated = await updatePromoCampaign(id, updates);
+    if (updated) {
+      setPromos(prev => ({
+        ...prev,
+        [id]: updated
+      }));
+    }
+  };
+
 
   const getPost = (id: string) => {
     const found = posts.find((p) => p.id === id);
@@ -101,6 +147,8 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
         getCategoryPosts,
         getFeaturedPosts,
         getTrendingPosts,
+        promos,
+        updatePromo,
       }}
     >
       {children}

@@ -12,7 +12,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { optimizeImageUrl } from '../lib/utils';
 
 export function Home() {
-  const { posts, loading, getFeaturedPosts, getTrendingPosts } = useBlog();
+  const { posts, loading, getFeaturedPosts, getTrendingPosts, promos } = useBlog();
+  const feedPromo = promos?.home_grid_ad_card;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [featuredOffer, setFeaturedOffer] = useState<Offer | null>(null);
   const [activeAds, setActiveAds] = useState<Ad[]>([]);
@@ -23,9 +24,68 @@ export function Home() {
   const navigate = useNavigate();
   const incrementedOfferRef = useRef<Set<string>>(new Set());
 
+  // Personalization fields for Finance, Technology, MMO, AI categories
+  const [preferredCategories, setPreferredCategories] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('oinone_preferred_categories');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isPersonalizedFilterActive, setIsPersonalizedFilterActive] = useState<boolean>(true);
+  const [streak, setStreak] = useState<number>(0);
+
+  // Daily learning streak computation
+  useEffect(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const lastVisit = localStorage.getItem('oinone_last_visit');
+      const currentStreak = localStorage.getItem('oinone_streak');
+      let newStreak = currentStreak ? parseInt(currentStreak, 10) : 0;
+
+      if (!lastVisit) {
+        newStreak = 1;
+        localStorage.setItem('oinone_last_visit', today);
+        localStorage.setItem('oinone_streak', '1');
+      } else if (lastVisit !== today) {
+        const lastVisitDate = new Date(lastVisit);
+        const todayDate = new Date(today);
+        const diffTime = Math.abs(todayDate.getTime() - lastVisitDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 1) {
+          newStreak += 1;
+        } else {
+          newStreak = 1; // broken streak, reset
+        }
+        localStorage.setItem('oinone_last_visit', today);
+        localStorage.setItem('oinone_streak', newStreak.toString());
+      }
+      setStreak(newStreak || 1);
+    } catch (err) {
+      console.warn('[Streak Loader Error]:', err);
+    }
+  }, []);
+
+  const handleTogglePreference = (categoryId: string) => {
+    let updated: string[];
+    if (preferredCategories.includes(categoryId)) {
+      updated = preferredCategories.filter(id => id !== categoryId);
+    } else {
+      updated = [...preferredCategories, categoryId];
+    }
+    setPreferredCategories(updated);
+    try {
+      localStorage.setItem('oinone_preferred_categories', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     setVisibleCount(6);
-  }, [selectedCategory, searchQuery, sortBy]);
+  }, [selectedCategory, searchQuery, sortBy, preferredCategories, isPersonalizedFilterActive]);
 
   useEffect(() => {
     const unsubscribeOffers = subscribeToActiveOffers((offers) => {
@@ -104,55 +164,89 @@ export function Home() {
       );
     }
 
-    // Apply exact custom sorting
-    displayPosts.sort((a, b) => {
-      if (sortBy === 'newest') {
-        const timeA = a.date ? new Date(a.date).getTime() : 0;
-        const timeB = b.date ? new Date(b.date).getTime() : 0;
-        return timeB - timeA;
-      }
-      if (sortBy === 'oldest') {
-        const timeA = a.date ? new Date(a.date).getTime() : 0;
-        const timeB = b.date ? new Date(b.date).getTime() : 0;
-        return timeA - timeB;
-      }
-      if (sortBy === 'views') {
-        return (b.viewsCount || 0) - (a.viewsCount || 0);
-      }
-      if (sortBy === 'likes') {
-        return (b.likesCount || 0) - (a.likesCount || 0);
-      }
-      return 0;
-    });
+    // Apply design-driven prioritized ranking if preferred categories are configured
+    if (selectedCategory === 'all' && isPersonalizedFilterActive && preferredCategories.length > 0) {
+      displayPosts.sort((a, b) => {
+        const aPreferred = preferredCategories.includes(a.categoryId);
+        const bPreferred = preferredCategories.includes(b.categoryId);
+        
+        if (aPreferred && !bPreferred) {
+          return -1;
+        }
+        if (!aPreferred && bPreferred) {
+          return 1;
+        }
+        
+        // Secondary sort within tiers
+        if (sortBy === 'newest') {
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeB - timeA;
+        }
+        if (sortBy === 'oldest') {
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeA - timeB;
+        }
+        if (sortBy === 'views') {
+          return (b.viewsCount || 0) - (a.viewsCount || 0);
+        }
+        if (sortBy === 'likes') {
+          return (b.likesCount || 0) - (a.likesCount || 0);
+        }
+        return 0;
+      });
+    } else {
+      // Standard sort fallback
+      displayPosts.sort((a, b) => {
+        if (sortBy === 'newest') {
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeB - timeA;
+        }
+        if (sortBy === 'oldest') {
+          const timeA = a.date ? new Date(a.date).getTime() : 0;
+          const timeB = b.date ? new Date(b.date).getTime() : 0;
+          return timeA - timeB;
+        }
+        if (sortBy === 'views') {
+          return (b.viewsCount || 0) - (a.viewsCount || 0);
+        }
+        if (sortBy === 'likes') {
+          return (b.likesCount || 0) - (a.likesCount || 0);
+        }
+        return 0;
+      });
+    }
 
     const totalMatchingCount = displayPosts.length;
     const paginatedPosts = displayPosts.slice(0, visibleCount);
 
     return (
-      <div className="space-y-32">
+      <div className="space-y-12 md:space-y-24">
         {/* PREMIUM AI HERO SECTION (Loads immediately) */}
-        <section className="relative min-h-[80vh] flex flex-col justify-center pt-10">
+        <section className="relative min-h-[45vh] md:min-h-[65vh] flex flex-col justify-center pt-4 md:pt-10 pb-4 md:pb-8">
           {/* Background Ambient Glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-purple/20 mix-blend-screen blur-[120px] rounded-full pointer-events-none dark:block hidden" />
           <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-brand-cyan/15 mix-blend-screen blur-[100px] rounded-full pointer-events-none dark:block hidden" />
 
-          <div className="relative z-10 max-w-4xl mx-auto text-center space-y-10">
+          <div className="relative z-10 max-w-4xl mx-auto text-center space-y-4 sm:space-y-8">
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-6"
+              className="space-y-3 sm:space-y-6"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-white/10 shadow-xl mb-4 bg-white/5 backdrop-blur-md">
-                <Sparkles className="w-4 h-4 text-brand-cyan animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-widest bg-gradient-to-r from-brand-cyan via-white to-brand-purple bg-clip-text text-transparent">Oinone Intelligence</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-panel border border-white/10 shadow-xl mb-1 sm:mb-4 bg-white/5 backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-brand-cyan animate-pulse" />
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest bg-gradient-to-r from-brand-cyan via-white to-brand-purple bg-clip-text text-transparent">Oinone Intelligence</span>
               </div>
               
-              <h1 className="text-5xl md:text-7xl font-display font-bold tracking-tighter text-balance text-gray-950 dark:text-white leading-[1.1]">
+              <h1 className="text-3xl sm:text-5xl md:text-7xl font-display font-bold tracking-tighter text-balance text-gray-950 dark:text-white leading-[1.1]">
                 The future of <span className="dark:gradient-text text-indigo-600">content publishing</span> is here.
               </h1>
               
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
+              <p className="text-sm sm:text-base md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-medium">
                 Explore an AI-curated universe of deep dives into Technology, Private Wealth, and Digital Ecosystems.
               </p>
             </motion.div>
@@ -165,9 +259,9 @@ export function Home() {
               className="relative max-w-2xl mx-auto"
             >
               <form onSubmit={handleSearch} className="relative z-20">
-                <div className={`relative flex items-center bg-white dark:bg-[#121216]/80 backdrop-blur-2xl border ${isSearchFocused ? 'border-brand-purple shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]' : 'border-gray-200 dark:border-gray-800'} rounded-3xl p-2 transition-all duration-500`}>
-                  <div className="pl-4 pr-3 text-gray-400 dark:text-gray-500">
-                    <Search className="w-6 h-6" />
+                <div className={`relative flex items-center bg-white dark:bg-[#121216]/80 backdrop-blur-2xl border ${isSearchFocused ? 'border-brand-purple shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]' : 'border-gray-200 dark:border-gray-800'} rounded-3xl p-1.5 sm:p-2 transition-all duration-500`}>
+                  <div className="pl-3 sm:pl-4 pr-2 sm:pr-3 text-gray-400 dark:text-gray-500">
+                    <Search className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <input
                     type="text"
@@ -176,13 +270,41 @@ export function Home() {
                     onFocus={() => setIsSearchFocused(true)}
                     onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                     placeholder="What do you want to master today?"
-                    className="w-full bg-transparent border-none outline-none py-3 text-gray-900 dark:text-white placeholder-gray-500 text-lg font-medium"
+                    className="w-full bg-transparent border-none outline-none py-2 sm:py-3 text-gray-900 dark:text-white placeholder-gray-500 text-sm sm:text-lg font-medium"
                   />
-                  <button type="submit" className="bg-gray-900 dark:bg-white text-white dark:text-gray-950 px-6 py-3 rounded-2xl font-bold text-sm transition-transform active:scale-95 hidden sm:block">
+                  <button type="submit" className="bg-gray-900 dark:bg-white text-white dark:text-gray-950 px-5 py-2.5 sm:px-6 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm transition-transform active:scale-95 hidden sm:block">
                     Explore
                   </button>
                 </div>
               </form>
+
+              {/* Dynamic Quick Categories List directly under Search bar for mobile & desktop easy tapping */}
+              <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 px-1">
+                {categories.map((topic) => {
+                  const TopicIcon = topic.icon;
+                  const isActive = selectedCategory === topic.id;
+                  return (
+                    <button
+                      key={`hero-cat-${topic.id}`}
+                      onClick={() => {
+                        setSelectedCategory(topic.id);
+                        const element = document.getElementById('articles-feed');
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      className={`flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold tracking-tight cursor-pointer transition-all duration-300 border ${
+                        isActive
+                          ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/10'
+                          : 'bg-white/10 dark:bg-[#121216]/50 border-gray-200 dark:border-white/5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <TopicIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>{topic.name.replace(' Insights', '').replace(' Ecosystem', '').replace(' Business', '').replace(' Intelligence', '')}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Live Search Results Popover */}
               <AnimatePresence>
@@ -229,59 +351,7 @@ export function Home() {
           <ArticleFeedSkeleton layout="home" />
         ) : (
           <>
-            {/* DYNAMIC TRENDING PORTS */}
-            {trending.length > 0 && (
-              <section className="space-y-8 pb-16 dark:border-b-0 border-b border-gray-200 dark:border-gray-800/80">
-                <div className="flex items-center gap-3">
-                  <Flame className="w-5 h-5 text-amber-500 animate-pulse" />
-                  <h2 className="font-display text-2xl font-bold tracking-tight text-gray-905 dark:text-white uppercase tracking-wider">
-                    Trending Articles
-                  </h2>
-                  <div className="h-[1px] flex-1 bg-gradient-to-r from-gray-200 dark:from-gray-800 to-transparent ml-4" />
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {trending.slice(0, 4).map((post, idx) => (
-                    <Link
-                      key={`trending-${post.id}`}
-                      to={`/article/${post.id}`}
-                      className="group relative flex flex-col justify-between p-6 rounded-[2rem] bg-gray-50/50 hover:bg-white dark:bg-[#121216]/50 dark:hover:bg-[#121216]/95 border border-gray-150 dark:border-white/5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 text-left"
-                    >
-                      <div className="space-y-4">
-                        {/* Numeric rank badge paired with read time */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-3xl font-mono font-extrabold text-[#1f2937]/10 dark:text-white/10 group-hover:text-brand-cyan/20 transition-colors">
-                            0{idx + 1}
-                          </span>
-                          <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-brand-purple/80 bg-brand-purple/10 border border-brand-purple/20 px-2.5 py-1 rounded-full">
-                            {post.readTime} min read
-                          </span>
-                        </div>
-                        
-                        <div>
-                          <h3 className="font-display font-black text-gray-950 dark:text-gray-100 group-hover:text-brand-purple transition-colors line-clamp-2 leading-snug">
-                            {post.title}
-                          </h3>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium line-clamp-2 mt-2 leading-relaxed">
-                            {post.excerpt}
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* Display metric badges inside container footer */}
-                      <div className="flex items-center gap-4 pt-5 mt-4 border-t border-gray-100 dark:border-white/5 text-[10px] font-mono font-bold text-gray-500 dark:text-gray-400">
-                        <span className="flex items-center gap-1.5 hover:text-red-400 transition-colors">
-                          <ThumbsUp className="w-3.5 h-3.5 text-brand-purple" /> {post.likesCount || 0} Likes
-                        </span>
-                        <span className="flex items-center gap-1.5 hover:text-brand-cyan transition-colors">
-                          <Eye className="w-3.5 h-3.5 text-brand-cyan" /> {post.viewsCount || 0} Views
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
 
             {/* ADSTERRA NATIVE BANNER AD INTEGRATION */}
             {activeAds.length > 0 && (
@@ -327,6 +397,90 @@ export function Home() {
                 </div>
               </section>
             )}
+
+            {/* PERSONALIZATION HUB */}
+            <section className="p-8 rounded-[2.5rem] bg-gradient-to-br from-[#121216] via-[#16161c] to-[#121216] border border-white/5 relative overflow-hidden shadow-2xl">
+              {/* Background ambient light */}
+              <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/15 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/15 blur-[80px] rounded-full pointer-events-none" />
+              
+              <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+                <div className="space-y-3 max-w-xl text-left">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold uppercase tracking-wider">
+                    <SlidersHorizontal className="w-3.5 h-3.5" /> PERSONALIZED DISCOVERY
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-display font-black text-white tracking-tight">
+                    Tailor Oinone to Your Ambitions
+                  </h2>
+                  <p className="text-gray-400 text-sm font-medium leading-relaxed">
+                    Select your preferred categories to dynamically prioritize the most relevant high-value insights, trends, and market analysis at the top of your feed.
+                  </p>
+                  
+                  {/* Streak and Stats Display to encourage daily visits */}
+                  <div className="flex flex-wrap items-center gap-4 pt-2">
+                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-2xl text-amber-400 text-xs font-bold animate-pulse">
+                      <Flame className="w-4 h-4 text-amber-500" />
+                      Daily Learning Streak: {streak} {streak === 1 ? 'Day' : 'Days'}
+                    </div>
+                    <div className="text-[11px] text-gray-500 font-bold uppercase tracking-widest font-mono">
+                      Visit daily to grow your knowledge streak! 📈
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Interactive Toggles */}
+                <div className="w-full lg:w-auto space-y-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-gray-400 text-left lg:text-right">
+                    My Preferred Categories:
+                  </div>
+                  <div className="flex flex-wrap gap-2.5 justify-start lg:justify-end">
+                    {[
+                      { id: 'finance', name: 'Finance', icon: Coins },
+                      { id: 'technology', name: 'Technology', icon: Cpu },
+                      { id: 'mmo', name: 'Make Money Online', icon: Zap },
+                      { id: 'ai', name: 'AI', icon: Sparkles },
+                    ].map((pref) => {
+                      const PrefIcon = pref.icon;
+                      const isSelected = preferredCategories.includes(pref.id);
+                      return (
+                        <button
+                          key={pref.id}
+                          onClick={() => handleTogglePreference(pref.id)}
+                          className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-300 relative cursor-pointer border ${
+                            isSelected
+                              ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-lg shadow-cyan-500/10'
+                              : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                          }`}
+                        >
+                          <PrefIcon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`} />
+                          <span>{pref.name}</span>
+                          {isSelected && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {preferredCategories.length > 0 && (
+                    <div className="flex items-center justify-start lg:justify-end gap-3 pt-2">
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isPersonalizedFilterActive}
+                          onChange={(e) => setIsPersonalizedFilterActive(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-cyan-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-cyan-500/20" />
+                        <span className="ml-2 text-xs font-bold text-gray-400">
+                          {isPersonalizedFilterActive ? '⚡ Prioritize Preferred ON' : 'Prioritize Preferred OFF'}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
 
             {/* LATEST ARTICLES (NOW PLACED AT THE VERY TOP) */}
             <section className="space-y-8 animate-fade-in" id="articles-feed">
@@ -378,41 +532,44 @@ export function Home() {
                 <div className="space-y-12">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {paginatedPosts.map((post, idx) => {
+                      const isPostPrioritized = isPersonalizedFilterActive && preferredCategories.includes(post.categoryId);
                       if (idx === 2) {
                         return (
                           <React.Fragment key={`ad-wrapper-${post.id}`}>
-                            <ArticleCard post={post} variant="standard" />
+                            <ArticleCard post={post} variant="standard" isPrioritized={isPostPrioritized} />
                             {/* Inline Grid Sponsor Card (Monetag Direct Link AD) */}
-                            <a 
-                              href="https://omg10.com/4/11136040"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="group glass-panel border border-emerald-500/30 bg-[#121216]/60 rounded-[2rem] overflow-hidden hover-glass transition-all duration-500 hover:-translate-y-2 flex flex-col relative text-left"
-                            >
-                              <div className="h-48 relative overflow-hidden bg-gradient-to-br from-emerald-950/40 to-cyan-950/40">
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#121216]/80 via-transparent to-transparent z-10" />
-                                <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wider">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> SPONSOR AD
+                            {feedPromo && feedPromo.status === 'active' && (
+                              <a 
+                                href={feedPromo.linkUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group glass-panel border border-emerald-500/30 bg-[#121216]/60 rounded-[2rem] overflow-hidden hover-glass transition-all duration-500 hover:-translate-y-2 flex flex-col relative text-left"
+                              >
+                                <div className="h-48 relative overflow-hidden bg-gradient-to-br from-emerald-950/40 to-cyan-950/40">
+                                  <div className="absolute inset-0 bg-gradient-to-t from-[#121216]/80 via-transparent to-transparent z-10" />
+                                  <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-wider">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {feedPromo.label}
+                                  </div>
+                                  <div className="flex items-center justify-center h-full text-emerald-400 bg-gradient-to-br from-emerald-950/40 to-brand-blue/20">
+                                    <Zap className="w-16 h-16 animate-bounce" style={{ animationDuration: '3s' }} />
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-center h-full text-emerald-400 bg-gradient-to-br from-emerald-950/20 to-brand-blue/20">
-                                  <Zap className="w-16 h-16 animate-bounce" style={{ animationDuration: '3s' }} />
+                                <div className="p-6 flex-1 flex flex-col relative">
+                                  <div className="absolute -top-5 right-6 z-20 bg-emerald-500 text-black font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 border border-emerald-500 flex items-center gap-1">
+                                    <Sparkles className="w-3.5 h-3.5 text-black" /> HOT OFFER
+                                  </div>
+                                  <h3 className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-emerald-300 transition-colors">{feedPromo.title}</h3>
+                                  <p className="text-sm text-gray-400 leading-relaxed mb-6 font-medium flex-1">{feedPromo.description}</p>
+                                  <div className="w-full flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 py-4 rounded-[1rem] text-xs font-bold uppercase tracking-widest transition-all duration-300">
+                                    {feedPromo.btnText} <ExternalLink className="w-4 h-4 text-emerald-400" />
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="p-6 flex-1 flex flex-col relative">
-                                <div className="absolute -top-5 right-6 z-20 bg-emerald-500 text-black font-extrabold px-3 py-1.5 rounded-xl text-xs shadow-lg shadow-emerald-500/20 border border-emerald-500 flex items-center gap-1">
-                                  <Sparkles className="w-3.5 h-3.5 text-black" /> HOT OFFER
-                                </div>
-                                <h3 className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-emerald-300 transition-colors">Digital Wealth Activation</h3>
-                                <p className="text-sm text-gray-400 leading-relaxed mb-6 font-medium flex-1">Securing direct high-payout income engines, verified advertising portals, and fast tracking MMORPG resources.</p>
-                                <div className="w-full flex items-center justify-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 py-4 rounded-[1rem] text-xs font-bold uppercase tracking-widest transition-all duration-300">
-                                  Access Partner Vault <ExternalLink className="w-4 h-4 text-emerald-400" />
-                                </div>
-                              </div>
-                            </a>
+                              </a>
+                            )}
                           </React.Fragment>
                         );
                       }
-                      return <ArticleCard key={post.id} post={post} variant="standard" />;
+                      return <ArticleCard key={post.id} post={post} variant="standard" isPrioritized={isPostPrioritized} />;
                     })}
                   </div>
 
@@ -482,52 +639,7 @@ export function Home() {
               </section>
             )}
 
-            {/* AI CATEGORY DISCOVERY (Replacing boring row) - MOVED TO THE BOTTOM */}
-            <section className="animate-fade-in">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Browse Categories</h2>
-                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-800 to-transparent mx-8 hidden md:block" />
-              </div>
-              
-              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-                {categories.map(topic => {
-                  const Icon = topic.icon;
-                  const isActive = selectedCategory === topic.id;
-                  const count = topic.id === 'all' ? posts.length : posts.filter(p => p.categoryId === topic.id).length;
-                  
-                  return (
-                    <button 
-                      key={topic.id} 
-                      onClick={() => {
-                        setSelectedCategory(topic.id);
-                        const element = document.getElementById('articles-feed');
-                        if (element) {
-                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }
-                      }} 
-                      className={`relative flex flex-col items-center justify-center gap-4 p-6 rounded-3xl transition-all duration-300 group overflow-hidden cursor-pointer ${
-                        isActive
-                          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-xl'
-                          : 'bg-white dark:bg-[#121216] border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg'
-                      }`}
-                    >
-                      {/* Subtle Background Icon for active state */}
-                      {isActive && <Icon className="absolute -right-4 -bottom-4 w-24 h-24 opacity-[0.03] dark:opacity-5 pointer-events-none" />}
-                      
-                      <div className={`p-4 rounded-2xl transition-colors ${isActive ? 'bg-white/10 dark:bg-black/5' : 'bg-gray-50 dark:bg-white/5 group-hover:bg-gray-100 dark:group-hover:bg-white/10'}`}>
-                        <Icon className={`w-6 h-6 ${isActive ? '' : 'dark:text-white text-gray-900'}`} />
-                      </div>
-                      <div className="text-center">
-                        <div className={`text-sm font-bold ${isActive ? '' : 'text-gray-900 dark:text-white'}`}>{topic.name}</div>
-                        <div className={`text-[10px] uppercase tracking-widest mt-1 font-semibold ${isActive ? 'text-white/70 dark:text-gray-900/70' : 'text-gray-400'}`}>
-                          {count} {count === 1 ? 'Record' : 'Records'}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
+            <div className="pt-2" />
           </>
         )}
       </div>
@@ -535,7 +647,7 @@ export function Home() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-32">
+    <div className="min-h-screen pt-16 sm:pt-24 pb-16 sm:pb-32">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <AnimatePresence mode="wait">
           <motion.div

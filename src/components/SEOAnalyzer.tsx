@@ -1,14 +1,16 @@
 import React, { useMemo } from 'react';
-import { CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, Wand2, Loader2 } from 'lucide-react';
 
 interface SEOAnalyzerProps {
   title: string;
   content: string;
   summary: string;
   keyword: string;
+  onFixSEO?: (issues: string[]) => void;
+  isFixing?: boolean;
 }
 
-export function SEOAnalyzer({ title, content, summary, keyword }: SEOAnalyzerProps) {
+export function SEOAnalyzer({ title, content, summary, keyword, onFixSEO, isFixing }: SEOAnalyzerProps) {
   const analysis = useMemo(() => {
     const results = [];
     let score = 100;
@@ -58,7 +60,7 @@ export function SEOAnalyzer({ title, content, summary, keyword }: SEOAnalyzerPro
     }
 
     // Images Alt Text
-    const imgTags = content.match(/<img[^>]+>/g) || [];
+    const imgTags: string[] = content.match(/<img[^>]+>/g) || [];
     let missingAlt = false;
     imgTags.forEach(img => {
       if (!img.includes('alt=') || img.includes('alt=""') || img.includes("alt=''")) {
@@ -92,14 +94,28 @@ export function SEOAnalyzer({ title, content, summary, keyword }: SEOAnalyzerPro
     return { score, results };
   }, [title, content, summary, keyword]);
 
+  const issuesToFix = analysis.results.filter(r => r.type !== 'success').map(r => r.text);
+
   return (
     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
           SEO Analyzer
         </h4>
-        <div className={`px-3 py-1 rounded-full text-xs font-bold ${analysis.score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : analysis.score >= 50 ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
-          Score: {analysis.score}/100
+        <div className="flex items-center gap-3">
+          {analysis.score < 90 && onFixSEO && (
+            <button 
+              onClick={() => onFixSEO(issuesToFix)}
+              disabled={isFixing}
+              className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-full text-xs font-bold transition-colors disabled:opacity-50"
+            >
+              {isFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              {isFixing ? 'Fixing...' : 'Auto-Fix SEO'}
+            </button>
+          )}
+          <div className={`px-3 py-1 rounded-full text-xs font-bold ${analysis.score >= 80 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : analysis.score >= 50 ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>
+            Score: {analysis.score}/100
+          </div>
         </div>
       </div>
       <div className="space-y-3">

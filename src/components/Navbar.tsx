@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink } from 'lucide-react';
+import { Search, X, Menu, Sparkles, Heart, Wallet, ExternalLink, Compass, Coins, Cpu, Zap, Shield, Brain } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn, CATEGORIES } from '../lib/utils';
 import { useBlog } from '../lib/BlogContext';
@@ -10,8 +10,21 @@ export function Navbar() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { posts } = useBlog();
+  const [activeChannel, setActiveChannel] = useState<string>(() => {
+    return localStorage.getItem('user_active_channel') || 'all';
+  });
+  const { posts, promos } = useBlog();
   const location = useLocation();
+
+  const navPromo = promos?.navbar_sidebar_widget;
+
+  const discoveryChannels = [
+    { id: 'all', name: 'All Insights', icon: Compass, path: '/', desc: 'Explore all deep dives', color: 'text-brand-cyan border-brand-cyan/25 bg-brand-cyan/5' },
+    { id: 'finance', name: 'Wealth & Arbitrage', icon: Coins, path: '/finance', desc: 'Financial analysis & markets', color: 'text-emerald-400 border-emerald-500/25 bg-emerald-500/5' },
+    { id: 'technology', name: 'Tech Infrastructure', icon: Cpu, path: '/technology', desc: 'Systems & hardware engineering', color: 'text-blue-400 border-blue-500/25 bg-blue-500/5' },
+    { id: 'mmo', name: 'Digital Cash Flow', icon: Zap, path: '/mmo', desc: 'Solo developer operations', color: 'text-amber-400 border-amber-500/25 bg-amber-500/5' },
+    { id: 'ai', name: 'Cognitive Engines', icon: Sparkles, path: '/ai', desc: 'Neural architectures & agents', color: 'text-indigo-400 border-indigo-500/25 bg-indigo-500/5' },
+  ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -213,9 +226,20 @@ export function Navbar() {
                 <Sparkles className="w-3.5 h-3.5 text-brand-cyan" /> Premium
               </span>
             </button>
+
+            {/* General Side Menu Toggle on Desktop with interactive effect */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="relative group p-2 rounded-full overflow-hidden border border-white/10 bg-[#121216] hover:border-brand-cyan/50 hover:bg-black transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+              title="Access Sidebar Discovery"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-brand-cyan/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Menu className="w-4 h-4 text-brand-cyan group-hover:rotate-90 transition-transform duration-300 relative z-10" />
+              <span className="font-display font-medium text-[10px] uppercase tracking-wider text-gray-300 hover:text-white relative z-10 pr-1.5">Discover</span>
+            </button>
           </div>
 
-          <div className="flex items-center space-x-4 md:hidden">
+          <div className="flex items-center space-x-2 md:hidden">
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="relative group px-4 py-1.5 rounded-full overflow-hidden border border-brand-purple/50 bg-black transition-all shadow-[0_0_15px_rgba(110,86,207,0.3)] cursor-pointer"
@@ -224,6 +248,15 @@ export function Navbar() {
               <span className="font-display font-bold text-[10px] uppercase tracking-widest text-white relative z-10 flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-brand-cyan" /> Premium
               </span>
+            </button>
+
+            {/* Neon Accent Mobile Side Menu Trigger with interactive rotating & pulsing effect */}
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-1.5 rounded-full border border-brand-cyan/30 bg-[#0e0d16] active:scale-90 duration-200 shadow-[0_0_10px_rgba(6,182,212,0.15)] flex items-center justify-center cursor-pointer hover:border-brand-cyan/80 transition-all"
+              aria-label="Open Sidebar Discover Menu"
+            >
+              <Menu className="w-4 h-4 text-brand-cyan animate-pulse hover:rotate-90 transition-transform duration-300" />
             </button>
           </div>
         </div>
@@ -266,24 +299,85 @@ export function Navbar() {
                    <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10" />
                    <h4 className="font-display font-bold text-white mb-2 relative z-10">Oinone Premium</h4>
                    <p className="text-sm font-medium text-gray-400 mb-4 relative z-10">Unlock exclusive financial strategies, private tools, and premium insights.</p>
-                   <Link to="/vault" onClick={() => setIsSidebarOpen(false)} className="inline-block w-full py-3 bg-white text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-gray-200 transition-colors text-center relative z-10">
+                   <Link to="/vault" onClick={() => setIsSidebarOpen(false)} className="inline-block w-full py-3 bg-white text-black font-bold uppercase tracking-widest text-xs rounded-xl hover:bg-gray-200 transition-colors text-center relative z-10 font-sans shadow-lg cursor-pointer">
                      Enter the Vault
                    </Link>
                 </div>
 
+                {/* PERSONALIZED DISCOVERY SECTION */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-cyan">Personalized Discovery</span>
+                    <span className="text-[9px] uppercase font-bold tracking-widest bg-brand-cyan/10 text-brand-cyan px-2.5 py-0.5 rounded-full border border-brand-cyan/25 animate-pulse">
+                      SMART ENGINE
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {discoveryChannels.map((channel) => {
+                      const IconComponent = channel.icon;
+                      const isSelected = activeChannel === channel.id;
+                      return (
+                        <Link
+                          key={`discover-sidebar-${channel.id}`}
+                          to={channel.path}
+                          onClick={() => {
+                            localStorage.setItem('user_active_channel', channel.id);
+                            setActiveChannel(channel.id);
+                            setIsSidebarOpen(false);
+                          }}
+                          className={cn(
+                            "group flex items-start gap-3.5 p-3 rounded-2xl border transition-all duration-300 text-left cursor-pointer",
+                            isSelected 
+                              ? "bg-white/10 border-brand-cyan/40 shadow-[0_4px_20px_rgba(6,182,212,0.15)]" 
+                              : "bg-[#121216]/60 border-white/5 hover:border-white/15 hover:bg-white/5"
+                          )}
+                        >
+                          <div className={cn(
+                            "p-2 rounded-xl transition-all duration-300 group-hover:scale-110",
+                            isSelected ? "bg-brand-cyan/20 text-brand-cyan" : "bg-white/5 text-gray-400 group-hover:text-white"
+                          )}>
+                            <IconComponent className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <h5 className={cn(
+                                "text-xs font-bold transition-colors leading-none",
+                                isSelected ? "text-brand-cyan font-extrabold" : "text-gray-200 group-hover:text-white"
+                              )}>
+                                {channel.name}
+                              </h5>
+                              {isSelected && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-500 group-hover:text-gray-400 mt-1 font-medium transition-colors">
+                              {channel.desc}
+                            </p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="space-y-3">
-                  <span className="px-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">Navigation</span>
+                  <span className="px-2 text-[10px] font-bold uppercase tracking-widest text-gray-500">Quick Links</span>
                   <div className="flex flex-col gap-1">
-                    {links.map((link) => (
-                      <Link 
-                        key={link.name} 
-                        to={link.path}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-gray-300 hover:text-white transition-colors border border-transparent hover:border-white/5"
-                      >
-                        {link.name}
-                      </Link>
-                    ))}
+                    <Link 
+                      to="/" 
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-gray-300 hover:text-white transition-colors border border-transparent hover:border-white/5"
+                    >
+                      Home
+                    </Link>
+                    <Link 
+                      to="/vault" 
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="px-4 py-3 rounded-xl hover:bg-white/5 text-sm font-bold text-gray-300 hover:text-white transition-colors border border-transparent hover:border-white/5"
+                    >
+                      Premium Vault
+                    </Link>
                     <Link 
                       to="/admin"
                       onClick={() => setIsSidebarOpen(false)}
@@ -291,34 +385,35 @@ export function Navbar() {
                     >
                       Admin Dashboard
                     </Link>
-
                   </div>
                 </div>
 
                 {/* Sponsor direct link ad */}
-                <a 
-                  href="https://omg10.com/4/11136040" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block group relative p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/15 overflow-hidden hover:border-emerald-300 transition-all text-left"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
-                  <div className="relative z-10 space-y-2">
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/15 border border-emerald-500/25 text-[8px] font-extrabold uppercase tracking-widest text-emerald-400">
-                      PARTNER AIRDROP
+                {navPromo && navPromo.status === 'active' && (
+                  <a 
+                    href={navPromo.linkUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block group relative p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/15 overflow-hidden hover:border-emerald-300 transition-all text-left"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
+                    <div className="relative z-10 space-y-2">
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-400/15 border border-emerald-500/25 text-[8px] font-extrabold uppercase tracking-widest text-emerald-400">
+                        {navPromo.label}
+                      </div>
+                      <h5 className="font-bold text-xs text-white group-hover:text-emerald-300 transition-colors">
+                        {navPromo.title}
+                      </h5>
+                      <p className="text-[10px] text-gray-400 font-medium leading-normal">
+                        {navPromo.description}
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider pt-1 justify-between">
+                        <span>{navPromo.btnText}</span>
+                        <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
                     </div>
-                    <h5 className="font-bold text-xs text-white group-hover:text-emerald-300 transition-colors">
-                      Claim $1,500 Reward & MMO Toolkits
-                    </h5>
-                    <p className="text-[10px] text-gray-400 font-medium leading-normal">
-                      Access verified direct-payment systems, complete monetization courses and premium digital toolsets now.
-                    </p>
-                    <div className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider pt-1 justify-between">
-                      <span>ACTIVATE PROTOCOL</span>
-                      <ExternalLink className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </div>
-                </a>
+                  </a>
+                )}
                 
                 <div className="mt-auto pt-6">
                   <div className="p-5 rounded-2xl border border-white/5 bg-[#121216]">

@@ -9,11 +9,12 @@ import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User 
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code, Menu, ArrowRight } from 'lucide-react';
-import { Post, CategoryId, Offer, Ad } from '../../types';
+import { Post, CategoryId, Offer, Ad, PromoCampaign } from '../../types';
 import { subscribeToOffers, createOffer, updateOffer, deleteOffer } from '../../lib/offerService';
 import { subscribeToAds, createAd, updateAd, deleteAd } from '../../lib/adsService';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { subscribeToPromos, updatePromoCampaign } from '../../lib/promoService';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { SEOAnalyzer } from '../../components/SEOAnalyzer';
 
 export function AdminDashboard() {
@@ -43,6 +44,12 @@ export function AdminDashboard() {
   const [showAdModal, setShowAdModal] = useState(false);
   const [adForm, setAdForm] = useState<Partial<Ad>>({ status: 'active' });
   const [editingAdId, setEditingAdId] = useState<string | null>(null);
+
+  // Promos State
+  const [promos, setPromos] = useState<Record<string, PromoCampaign>>({});
+  const [showPromoModal, setShowPromoModal] = useState(false);
+  const [promoForm, setPromoForm] = useState<Partial<PromoCampaign>>({});
+  const [editingPromoId, setEditingPromoId] = useState<string | null>(null);
 
   // Pending Tasks State
   const [tasks, setTasks] = useState<{ id: string; text: string; completed: boolean; priority: 'High' | 'Medium' | 'Low' }[]>(() => {
@@ -95,6 +102,68 @@ export function AdminDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedDraft, setGeneratedDraft] = useState<any>(null);
   const [activeCoverIndex, setActiveCoverIndex] = useState<number>(0);
+  const [isIdeatingTopics, setIsIdeatingTopics] = useState(false);
+  const [ideatedTopics, setIdeatedTopics] = useState<string[]>([]);
+  const [isFixingSEO, setIsFixingSEO] = useState(false);
+
+  const handleIdeateTopics = async () => {
+    setIsIdeatingTopics(true);
+    setIdeatedTopics([]);
+    try {
+      const response = await fetch('/api/ai/ideate-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: aiForm.categoryId,
+          keyword: aiForm.keyword,
+          description: aiForm.idea,
+          targetAudience: aiForm.topic // usually the target audience is in 'topic' in the UI or we can just send it as context
+        }),
+      });
+
+      if (!response.ok) throw new Error('API request failed');
+      const data = await response.json();
+      setIdeatedTopics(data.topics || []);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to ideate topics. Make sure server is running.');
+    } finally {
+      setIsIdeatingTopics(false);
+    }
+  };
+
+  const handleFixSEO = async (issues: string[]) => {
+    if (!generatedDraft) return;
+    setIsFixingSEO(true);
+    try {
+      const response = await fetch('/api/ai/fix-seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: generatedDraft.title,
+          content: generatedDraft.content,
+          summary: generatedDraft.summary || '',
+          keyword: aiForm.keyword,
+          issues
+        }),
+      });
+
+      if (!response.ok) throw new Error('API request failed');
+      const data = await response.json();
+      
+      setGeneratedDraft((prev: any) => ({
+        ...prev,
+        title: data.title || prev.title,
+        content: data.content || prev.content,
+        summary: data.summary || prev.summary
+      }));
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to fix SEO: ${err.message}`);
+    } finally {
+      setIsFixingSEO(false);
+    }
+  };
 
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   // New Post Form State
@@ -105,6 +174,7 @@ export function AdminDashboard() {
   useEffect(() => {
     let unsubscribeOffers: (() => void) | null = null;
     let unsubscribeAds: (() => void) | null = null;
+    let unsubscribePromos: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -142,6 +212,10 @@ export function AdminDashboard() {
               unsubscribeAds();
               unsubscribeAds = null;
             }
+            if (unsubscribePromos) {
+              unsubscribePromos();
+              unsubscribePromos = null;
+            }
           } else {
             setUser(u);
             setIsAdmin(true);
@@ -155,6 +229,12 @@ export function AdminDashboard() {
               unsubscribeAds = subscribeToAds(setAds, (err) => {
                 console.error('[AdminDashboard] Ads subscription failed:', err);
               });
+            }
+            if (!unsubscribePromos) {
+              unsubscribePromos = subscribeToPromos(
+                (dataMap) => setPromos(dataMap),
+                (err) => console.error('[AdminDashboard] Promos subscription failed:', err)
+              );
             }
           }
         } catch (e) {
@@ -174,6 +254,10 @@ export function AdminDashboard() {
           unsubscribeAds();
           unsubscribeAds = null;
         }
+        if (unsubscribePromos) {
+          unsubscribePromos();
+          unsubscribePromos = null;
+        }
       }
       setLoading(false);
     });
@@ -185,6 +269,9 @@ export function AdminDashboard() {
       }
       if (unsubscribeAds) {
         unsubscribeAds();
+      }
+      if (unsubscribePromos) {
+        unsubscribePromos();
       }
     };
   }, []);
@@ -248,6 +335,20 @@ export function AdminDashboard() {
   const handleRemoveOffer = async (id: string) => {
     if (window.confirm('Delete this CPA offer?')) {
       await deleteOffer(id);
+    }
+  };
+
+  const handleSavePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPromoId) return;
+    try {
+      await updatePromoCampaign(editingPromoId as any, promoForm);
+      setShowPromoModal(false);
+      setPromoForm({});
+      setEditingPromoId(null);
+    } catch (error: any) {
+      console.error('Failed to save promo card', error);
+      alert(`Error saving promo card:\n\n${error.message || String(error)}`);
     }
   };
 
@@ -1134,7 +1235,7 @@ export function AdminDashboard() {
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Target Article Length</label>
                       <input type="text" value={aiForm.length} onChange={e => setAiForm({...aiForm, length: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-950/50 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all outline-none" />
                     </div>
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 relative">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">Brief Description / Article Idea</label>
                       <textarea
                         value={aiForm.idea}
@@ -1143,6 +1244,27 @@ export function AdminDashboard() {
                         placeholder="Briefly describe what this article should be about... E.g., 'Write an article on how the new React compiler works under the hood with code examples.'"
                         rows={3}
                       />
+                      
+                      {ideatedTopics.length > 0 && (
+                        <div className="mt-4 p-4 bg-indigo-50/50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/20 rounded-xl">
+                          <h4 className="text-xs font-bold text-indigo-700 dark:text-indigo-400 mb-3 flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            AI Suggested Topics
+                          </h4>
+                          <div className="space-y-2">
+                            {ideatedTopics.map((topicItem, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setAiForm({ ...aiForm, idea: topicItem })}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-indigo-500/10 rounded-lg transition-colors border border-transparent hover:border-indigo-100 dark:hover:border-indigo-500/30 truncate"
+                              >
+                                {idx + 1}. {topicItem}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-3">Cover Art Selection Protocol</label>
@@ -1171,14 +1293,29 @@ export function AdminDashboard() {
                         Synthesizing premium editorial content drafts and executing search engine crawl grounding...
                       </div>
                     )}
-                    <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex items-center gap-2 ml-auto cursor-pointer">
-                       {isGenerating ? (
-                         <>
-                           <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin"></div>
-                           <span>Creating Draft...</span>
-                         </>
-                       ) : 'Generate Blog Post'}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 ml-auto w-full sm:w-auto">
+                      <button type="button" onClick={handleIdeateTopics} disabled={isGenerating || isIdeatingTopics} className="px-6 py-3 border-2 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 rounded-xl font-bold tracking-wide transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer">
+                        {isIdeatingTopics ? (
+                          <>
+                            <div className="w-4 h-4 border-t-2 border-indigo-600 dark:border-indigo-400 rounded-full animate-spin"></div>
+                            <span>Ideating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            <span>Ideate Topics</span>
+                          </>
+                        )}
+                      </button>
+                      <button type="submit" disabled={isGenerating} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold tracking-wide transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer">
+                         {isGenerating ? (
+                           <>
+                             <div className="w-5 h-5 border-t-2 border-white rounded-full animate-spin"></div>
+                             <span>Creating Draft...</span>
+                           </>
+                         ) : 'Generate Blog Post'}
+                      </button>
+                    </div>
                   </div>
                 </form>
               ) : (
@@ -1187,6 +1324,35 @@ export function AdminDashboard() {
                     <strong className="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-wider font-sans block mb-1.5">Deep Research Grounding Synopsis:</strong>
                     {generatedDraft.researchSummary}
                   </div>
+
+                  {generatedDraft.imageErrors && generatedDraft.imageErrors.length > 0 && (
+                    <div className="p-5 rounded-3xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-amber-500 space-y-3 shadow-lg backdrop-blur-md">
+                      <div className="flex items-center gap-2 font-display text-sm font-black tracking-tight text-amber-500 dark:text-amber-400">
+                        <svg className="w-5 h-5 flex-shrink-0 text-amber-500 dark:text-amber-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        AI Image Generation Info (Quota Limit Reached)
+                      </div>
+                      <div className="space-y-2 text-xs text-amber-700 dark:text-amber-300/90 leading-relaxed font-sans font-medium">
+                        <p>
+                          The high-fidelity model <strong>gemini-2.5-flash-image</strong> returned a <code>429: Quota Exceeded</code> error. Large-scale image generation API requests typically require a premium, pay-as-you-go billing setup with Google AI Studio.
+                        </p>
+                        <p>
+                          ⚡ <strong>No Action Required!</strong> Oinone's smart publishing engine has seamlessly activated its multi-agent stock photography system. We have automatically curated gorgeous, high-resolution matching photography from our premium Unsplash collection, fully styled and matching your chosen category. You can select your favorite below!
+                        </p>
+                      </div>
+                      <details className="text-[10px] text-amber-600/70 dark:text-amber-400/50 hover:text-amber-400 transition-colors pt-1 cursor-pointer">
+                        <summary className="font-bold uppercase tracking-wider font-sans select-none">View Technical Diagnostics</summary>
+                        <div className="mt-2 bg-black/40 backdrop-blur-md p-3 rounded-2xl max-h-36 overflow-y-auto font-mono text-[9px] leading-relaxed select-all border border-amber-500/10">
+                          {generatedDraft.imageErrors.map((errStr: string, idx: number) => (
+                            <div key={idx} className="pb-1 text-rose-400 border-b border-white/5 last:border-0 last:pb-0 whitespace-pre-wrap">
+                              {errStr}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
                   
                   <div className="space-y-6">
                     <div>
@@ -1291,6 +1457,8 @@ export function AdminDashboard() {
                           content={generatedDraft.content}
                           summary={generatedDraft.summary || generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150)}
                           keyword={aiForm.keyword}
+                          onFixSEO={handleFixSEO}
+                          isFixing={isFixingSEO}
                         />
                       </div>
                     </div>
@@ -1362,6 +1530,8 @@ export function AdminDashboard() {
                     content={generatedDraft.content}
                     summary={generatedDraft.summary || generatedDraft.content.replace(/<[^>]+>/g, '').substring(0, 150)}
                     keyword={aiForm.keyword}
+                    onFixSEO={handleFixSEO}
+                    isFixing={isFixingSEO}
                   />
                </div>
             </div>
@@ -1486,6 +1656,59 @@ export function AdminDashboard() {
                   <p className="text-gray-500 text-sm">No active banner ads. Deploy an Ad and start monetizing traffic natively.</p>
                 </div>
               )}
+            </div>
+
+            {/* System Promo Campaigns Section */}
+            <div className="bg-gray-50 dark:bg-blue-950/20 p-6 rounded-2xl border border-gray-200 dark:border-blue-500/20 shadow-sm relative overflow-hidden mt-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/10 pointer-events-none" />
+              <div className="relative z-10 text-left">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-emerald-500" />
+                  Premium Airdrops & Placement Config
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-blue-200/50 mt-1">Configure high-monetizing system direct-link blocks, toggles, button texts, and niches titles across the blog.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              {Object.entries(promos).map(([id, promo]) => (
+                <div key={id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:border-emerald-400 dark:hover:border-emerald-500/40 transition-colors flex flex-col p-5 text-left">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
+                      {id.replace(/_/g, ' ').toUpperCase()}
+                    </span>
+                    <span className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${promo.status === 'active' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400 dark:border-emerald-500/25' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-400 dark:border-rose-500/25'}`}>
+                      {promo.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">{promo.label}</div>
+                    <h4 className="text-base font-bold text-gray-900 dark:text-white tracking-tight line-clamp-1">{promo.title}</h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed font-medium">{promo.description}</p>
+                    <div className="text-xs text-gray-500 truncate mt-1">
+                      <span className="font-bold text-gray-400">URL:</span> <span className="hover:underline text-indigo-400">{promo.linkUrl}</span>
+                    </div>
+                    <div className="text-xs text-gray-550 truncate">
+                      <span className="font-bold text-gray-400">CTA:</span> <span className="text-emerald-400 uppercase font-extrabold">{promo.btnText}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-850 flex gap-2">
+                    <button 
+                      onClick={() => updatePromoCampaign(id as any, { status: promo.status === 'active' ? 'inactive' : 'active' })} 
+                      className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-gray-200 dark:border-gray-700"
+                    >
+                      {promo.status === 'active' ? 'Pause' : 'Activate'}
+                    </button>
+                    <button 
+                      onClick={() => { setPromoForm(promo); setEditingPromoId(id); setShowPromoModal(true); }} 
+                      className="flex-1 flex items-center justify-center bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer border border-emerald-200 dark:border-emerald-500/20"
+                    >
+                      Edit Placement
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
@@ -1985,7 +2208,7 @@ export function AdminDashboard() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-left">
               <form id="ad-form" onSubmit={handleSaveAd} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Ad Banner Image URL</label>
@@ -2013,8 +2236,61 @@ export function AdminDashboard() {
               </form>
             </div>
             <div className="p-6 border-t border-gray-100 dark:border-indigo-950/40 flex justify-end gap-3 bg-gray-50 dark:bg-[#0a091f]">
-              <button type="button" onClick={() => setShowAdModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+              <button type="button" onClick={() => setShowAdModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-950 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
               <button type="submit" form="ad-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white tracking-wide transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">{editingAdId ? 'Save Ad' : 'Launch Ad'}</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Promo Placements Modal */}
+      {showPromoModal && (
+        <div className="fixed inset-0 bg-slate-940/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-[#0e0d28] w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl border border-gray-200 dark:border-indigo-900/40 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-indigo-950/40">
+              <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Premium Placement</h3>
+              <button type="button" onClick={() => setShowPromoModal(false)} className="text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 p-1.5 rounded-xl transition-all cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-left">
+              <form id="promo-form" onSubmit={handleSavePromo} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Airdrop/Offer Placement ID</label>
+                  <input type="text" disabled value={editingPromoId || ''} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-100 dark:bg-[#030308] text-gray-400 focus:outline-none cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Display Label/Badge</label>
+                  <input type="text" required value={promoForm.label || ''} onChange={(e) => setPromoForm({...promoForm, label: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Title Headline</label>
+                  <input type="text" required value={promoForm.title || ''} onChange={(e) => setPromoForm({...promoForm, title: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Ad Description Copy</label>
+                  <textarea rows={3} required value={promoForm.description || ''} onChange={(e) => setPromoForm({...promoForm, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none resize-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Target Direct-Link URL</label>
+                  <input type="url" required value={promoForm.linkUrl || ''} onChange={(e) => setPromoForm({...promoForm, linkUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Action Button / CTA Text</label>
+                  <input type="text" required value={promoForm.btnText || ''} onChange={(e) => setPromoForm({...promoForm, btnText: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 dark:text-indigo-300/70 uppercase tracking-wider mb-2">Status</label>
+                  <select value={promoForm.status || 'active'} onChange={(e) => setPromoForm({...promoForm, status: e.target.value as any})} className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-indigo-950 bg-gray-50/50 dark:bg-[#060610]/80 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all outline-none">
+                    <option value="active">Active (Visible)</option>
+                    <option value="inactive">Paused (Hidden)</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+            <div className="p-6 border-t border-gray-100 dark:border-indigo-950/40 flex justify-end gap-3 bg-gray-50 dark:bg-[#0a091f]">
+              <button type="button" onClick={() => setShowPromoModal(false)} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+              <button type="submit" form="promo-form" className="px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white tracking-wide transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer">Save Changes</button>
             </div>
           </motion.div>
         </div>

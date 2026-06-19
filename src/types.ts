@@ -59,3 +59,15 @@ export interface Ad {
   status: 'active' | 'inactive';
   createdAt: number;
 }
+
+export interface PromoCampaign {
+  id: 'article_inline_banner' | 'article_sidebar_block' | 'navbar_sidebar_widget' | 'home_grid_ad_card';
+  label: string;
+  title: string;
+  description: string;
+  linkUrl: string;
+  btnText: string;
+  status: 'active' | 'inactive';
+  updatedAt?: number;
+}
+
