@@ -101,6 +101,41 @@ export function AdminDashboard() {
   // AI Writer State
   const [aiForm, setAiForm] = useState({ topic: '', keyword: '', categoryId: 'ai', tone: 'Professional', length: 'Medium (around 800-1000 words)', idea: '', imageType: 'stock' });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStage, setGenerationStage] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (isGenerating) {
+      setGenerationProgress(0);
+      setGenerationStage(0);
+      interval = setInterval(() => {
+        setGenerationProgress((prev) => {
+          if (prev >= 98) return prev; // Hold at 98% until done
+          const increment = prev < 30 ? 4 : prev < 65 ? 2 : prev < 85 ? 1 : 0.5;
+          const nextVal = Math.min(prev + increment, 98);
+          
+          if (nextVal < 20) {
+            setGenerationStage(0);
+          } else if (nextVal < 45) {
+            setGenerationStage(1);
+          } else if (nextVal < 70) {
+            setGenerationStage(2);
+          } else if (nextVal < 88) {
+            setGenerationStage(3);
+          } else {
+            setGenerationStage(4);
+          }
+          return nextVal;
+        });
+      }, 400);
+    } else {
+      setGenerationProgress(0);
+      setGenerationStage(0);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating]);
+
   const [generatedDraft, setGeneratedDraft] = useState<any>(null);
   const [activeCoverIndex, setActiveCoverIndex] = useState<number>(0);
   const [isIdeatingTopics, setIsIdeatingTopics] = useState(false);
@@ -1343,13 +1378,78 @@ export function AdminDashboard() {
                       </div>
                     </div>
                   </div>
-                  <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-gray-800">
-                    {isGenerating && (
-                      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 animate-pulse flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping"></span>
-                        Synthesizing premium editorial content drafts and executing search engine crawl grounding...
+                  {isGenerating && (
+                    <div className="w-full mt-6 p-5 rounded-2xl border border-indigo-150 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-950/20 space-y-4">
+                      {/* Title & percentage */}
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-widest flex items-center gap-1.5">
+                          <Cpu className="w-4 h-4 animate-spin text-indigo-500" />
+                          Synergistic Editorial Generation Protocol
+                        </span>
+                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          {Math.floor(generationProgress)}%
+                        </span>
                       </div>
-                    )}
+
+                      {/* Main Progress Bar Container */}
+                      <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 transition-all duration-500 ease-out"
+                          style={{ width: `${generationProgress}%` }}
+                        />
+                      </div>
+
+                      {/* Progress Stages stepper list */}
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-1">
+                        {[
+                          { title: "Planning", desc: "SEO keyword strategy & intent review" },
+                          { title: "Grounding", desc: "Real-time digital context & wiki crawls" },
+                          { title: "Drafting", desc: "Expert long-form section drafting" },
+                          { title: "SEO Sync", desc: "HTML structural check & tag tune-up" },
+                          { title: "Assets Sync", desc: "Cloudinary upload & image generation" }
+                        ].map((stage, idx) => {
+                          const isCompleted = generationStage > idx;
+                          const isActive = generationStage === idx;
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`p-3 rounded-xl border transition-all duration-300 ${
+                                isCompleted 
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300' 
+                                  : isActive 
+                                    ? 'bg-indigo-50/80 dark:bg-indigo-600/15 border-indigo-300 dark:border-indigo-500/40 text-indigo-900 dark:text-indigo-200 shadow-md scale-[1.02]' 
+                                    : 'bg-transparent border-gray-100 dark:border-gray-800 text-gray-400 dark:text-gray-500 opacity-60'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                  isCompleted 
+                                    ? 'bg-emerald-500 text-white' 
+                                    : isActive 
+                                      ? 'bg-indigo-600 text-white animate-pulse' 
+                                      : 'bg-gray-150 dark:bg-gray-800 text-gray-500'
+                                }`}>
+                                  {isCompleted ? "✓" : idx + 1}
+                                </div>
+                                <span className="font-bold text-xs tracking-tight">{stage.title}</span>
+                              </div>
+                              <p className="text-[10px] leading-tight font-medium opacity-90">{stage.desc}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="text-center font-mono text-[10px] text-gray-500 dark:text-gray-400">
+                        {generationStage === 0 && "🚀 Phase 1: Analyzing SEO inputs & search patterns..."}
+                        {generationStage === 1 && "🌐 Phase 2: Interrogating Google Search grounding API & indexing live sources..."}
+                        {generationStage === 2 && "📝 Phase 3: Unleashing high-density text compiler with professional tone mapping..."}
+                        {generationStage === 3 && "⚡ Phase 4: Constructing rich semantic headings, table arrays, and meta templates..."}
+                        {generationStage === 4 && "🖼️ Phase 5: Querying Pollinations high-fidelity APIs & caching through Cloudinary edge network..."}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex flex-col sm:flex-row gap-3 ml-auto w-full sm:w-auto">
                       <button type="button" onClick={handleIdeateTopics} disabled={isGenerating || isIdeatingTopics} className="px-6 py-3 border-2 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 disabled:opacity-50 rounded-xl font-bold tracking-wide transition-all active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer">
                         {isIdeatingTopics ? (
