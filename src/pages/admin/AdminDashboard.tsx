@@ -8,7 +8,7 @@ import { collection, getDocs, doc, deleteDoc, setDoc, query, orderBy, limit } fr
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code, Menu, ArrowRight } from 'lucide-react';
+import { Lock, LayoutDashboard, Users, MessageSquare, LogOut, FileText, Trash2, Plus, X, Edit2, Coins, Cpu, Sparkles, TrendingUp, Zap, Code, Menu, ArrowRight, AlertTriangle, ServerCrash } from 'lucide-react';
 import { Post, CategoryId, Offer, Ad, PromoCampaign } from '../../types';
 import { subscribeToOffers, createOffer, updateOffer, deleteOffer } from '../../lib/offerService';
 import { subscribeToAds, createAd, updateAd, deleteAd } from '../../lib/adsService';
@@ -2262,52 +2262,77 @@ export function AdminDashboard() {
       {activeTab === 'system-errors' && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl max-w-full">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">System Error Logs</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review critical system failures and exceptions collected from all clients globally.</p>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl">
+                <ServerCrash className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-display font-extrabold text-gray-900 dark:text-white tracking-tight">System Error Logs</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Review critical system failures and exceptions collected from all clients globally.</p>
+              </div>
             </div>
-            <button onClick={fetchSystemErrors} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors">
-              Refresh Logs
+            <button onClick={fetchSystemErrors} className="px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-sm font-bold rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-2">
+              <Zap className="w-4 h-4" /> Refresh Logs
             </button>
           </div>
 
-          <div className="bg-white dark:bg-[#0a0a0c] border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-[#0a0a0c] border border-gray-200 dark:border-white/5 rounded-3xl overflow-hidden shadow-xl">
             {systemErrors.length === 0 ? (
-              <div className="p-12 text-center text-gray-400">
-                <p>No system errors recorded recently. Your app is running smoothly! 🎉</p>
+              <div className="p-16 text-center">
+                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Systems Operational</h3>
+                <p className="text-gray-500 dark:text-gray-400">No system errors recorded recently. Your app is running smoothly! 🎉</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100 dark:divide-white/5">
-                {systemErrors.map((errItem) => (
-                  <div key={errItem.id} className="p-4 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                            Error
-                          </span>
-                          <span className="text-xs text-gray-400 font-mono">
-                            {new Date(errItem.timestamp).toLocaleString()}
-                          </span>
+              <div className="divide-y divide-gray-100 dark:divide-white/5 bg-gray-50/50 dark:bg-transparent">
+                {systemErrors.map((errItem) => {
+                  let cleanedMessage = errItem.message;
+                  let isCloudRunCrash = false;
+                  
+                  if (cleanedMessage.includes("FUNCTION_INVOCATION_FAILED")) {
+                    isCloudRunCrash = true;
+                    cleanedMessage = cleanedMessage.replace(/FUNCTION_INVOCATION_FAILED\s+[a-zA-Z0-9:-]+/, "Cloud Run Instance Crash (Function Invocation Failed)");
+                  }
+
+                  return (
+                    <div key={errItem.id} className="p-5 hover:bg-white dark:hover:bg-white/[0.02] transition-colors group">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-5">
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center gap-3">
+                            <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-wider flex items-center gap-1.5 ${isCloudRunCrash ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' : 'bg-rose-500/10 text-rose-500 border border-rose-500/20'}`}>
+                              <AlertTriangle className="w-3 h-3" />
+                              {isCloudRunCrash ? 'FATAL CRASH' : 'ERROR'}
+                            </span>
+                            <span className="text-xs text-gray-400 font-mono flex items-center gap-2">
+                              {new Date(errItem.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          <h4 className="text-base font-bold text-gray-900 dark:text-gray-100 break-words leading-relaxed group-hover:text-rose-500 transition-colors">
+                            {cleanedMessage}
+                          </h4>
+                          
+                          {errItem.context && errItem.context !== "{}" && (
+                            <div className="mt-3 bg-[#1e1e24] rounded-xl border border-white/5 p-4 overflow-x-auto">
+                              <pre className="text-[11px] font-mono leading-relaxed text-emerald-400">
+                                {errItem.context}
+                              </pre>
+                            </div>
+                          )}
                         </div>
-                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-200 break-words mt-2">
-                          {errItem.message}
-                        </h4>
-                        {errItem.context && errItem.context !== "{}" && (
-                          <pre className="mt-2 text-[10px] font-mono text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-black/50 p-2 rounded border border-gray-100 dark:border-white/5 overflow-x-auto">
-                            {errItem.context}
-                          </pre>
-                        )}
-                      </div>
-                      <div className="shrink-0 text-xs text-gray-400">
-                        <span className="block mb-1">User ID:</span>
-                        <code className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300">
-                          {errItem.userId === 'anonymous' ? 'Anon' : errItem.userId.slice(0,8)+'...'}
-                        </code>
+                        
+                        <div className="shrink-0 flex md:flex-col items-center md:items-end gap-2 md:gap-1 text-xs text-gray-400 bg-gray-100 dark:bg-white/5 px-3 py-2 rounded-xl">
+                          <span className="block font-medium">User:</span>
+                          <code className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                            {errItem.userId === 'anonymous' ? 'Anonymous' : errItem.userId.slice(0,8)+'...'}
+                          </code>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

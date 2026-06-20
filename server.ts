@@ -74,7 +74,10 @@ async function generateContentWithRetry(params: {
   // Chain of fallback models to try if the previous one fails
   // Force gemini-3.5-flash to respect the user's free plan, avoiding other premium query limitations
   const modelsToTry = [
-    "gemini-3.5-flash"
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-pro"
   ];
 
   // Keep unique models in the prioritized order
@@ -426,12 +429,9 @@ Provide ONLY a numbered list of exactly 5 creative, click-worthy, and SEO-optimi
 2. Second Topic
 ...`;
 
-    const aiResponse = await getAiClient().models.generateContent({
+    const aiResponse = await generateContentWithRetry({
       model: 'gemini-3.5-flash',
-      contents: {
-        role: 'user',
-        parts: [{ text: prompt }]
-      }
+      contents: prompt
     });
 
     const responseText = aiResponse.text || '';
@@ -486,7 +486,7 @@ ${issues.map((i: string) => `- ${i}`).join('\n')}
 
 Ensure your entire generated HTML content is professional, elegant, and matches the premium, high-contrast, tech-savvy brand voice of Oinone.`;
 
-    const aiResponse = await getAiClient().models.generateContent({
+    const aiResponse = await generateContentWithRetry({
       model: 'gemini-3.5-flash',
       contents: prompt,
       config: {
