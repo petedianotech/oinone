@@ -11,6 +11,7 @@ import { motion, useScroll, useSpring } from 'motion/react';
 import React, { useState, useEffect } from 'react';
 import { subscribeToComments, addPostComment, togglePostLike, CommentData, incrementPostViews } from '../lib/blogService';
 import { formatDistanceToNow } from 'date-fns';
+import Markdown from 'react-markdown';
 
 export function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>();
@@ -484,7 +485,7 @@ export function ArticlePage() {
         </div>
 
         {/* Main Article Content */}
-        <article className="lg:col-span-7 w-full sm:-mt-10 relative z-20">
+        <article className="lg:col-span-7 w-full min-w-0 sm:-mt-10 relative z-20">
           
           {/* Futuristic Audio Synthesizer / TTS Control Center */}
           <div className="mb-8 p-5 rounded-3xl bg-[#121216]/95 border border-white/5 relative overflow-hidden backdrop-blur-md shadow-xl">
@@ -606,7 +607,7 @@ export function ArticlePage() {
             </a>
           )}
 
-          <div className="prose prose-invert prose-lg prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
+          <div className="prose prose-invert prose-lg max-w-none w-full break-words prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
             {(() => {
               const renderedElements: React.ReactNode[] = [];
               const totalItems = post.content.length;
@@ -626,9 +627,9 @@ export function ArticlePage() {
                 } else if (idx === 0) {
                   const cleanedParagraph = paragraph
                     .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
-                  elementObj = <p key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10">{cleanedParagraph}</p>;
+                  elementObj = <div key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10 markdown-body"><Markdown>{cleanedParagraph}</Markdown></div>;
                 } else {
-                  elementObj = <p key={`p-${idx}`} className="mb-8">{paragraph}</p>;
+                  elementObj = <div key={`p-${idx}`} className="mb-8 markdown-body"><Markdown>{paragraph}</Markdown></div>;
                 }
                 
                 renderedElements.push(elementObj);

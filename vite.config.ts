@@ -4,28 +4,14 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import fs from 'fs';
 
-// Automatically ensure PWA and OG assets are in place within /public on boot
+// Setup public directory
 try {
   const publicDir = path.resolve(__dirname, 'public');
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
   }
-
-  const srcIcon = path.resolve(__dirname, 'src/assets/images/premium_app_icon_1781100879206.png');
-  const destIcon = path.resolve(__dirname, 'public/app_icon.png');
-  if (fs.existsSync(srcIcon)) {
-    fs.copyFileSync(srcIcon, destIcon);
-    console.log('[Assets Sync] Successfully copied app_icon image to public folder.');
-  }
-
-  const srcOg = path.resolve(__dirname, 'src/assets/images/premium_og_banner_1781100898872.png');
-  const destOg = path.resolve(__dirname, 'public/og_image.png');
-  if (fs.existsSync(srcOg)) {
-    fs.copyFileSync(srcOg, destOg);
-    console.log('[Assets Sync] Successfully copied og_image image to public folder.');
-  }
 } catch (e) {
-  console.error('[Assets Sync Error] Failed to auto-copy PWA/OG assets:', e);
+  console.error('[Assets Error] Failed to ensure public folder exists:', e);
 }
 
 export default defineConfig(() => {

@@ -27,6 +27,37 @@ function getAiClient(): GoogleGenAI {
   return aiClient;
 }
 
+// Cloudinary sync helper to optimize generated placeholder images
+async function uploadToCloudinary(url: string): Promise<string> {
+  const cloudName = process.env.VITE_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.VITE_CLOUDINARY_UPLOAD_PRESET || process.env.CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset || (!url.includes('pollinations.ai') && !url.includes('unsplash.com'))) return url;
+
+  try {
+    const params = new URLSearchParams();
+    params.append('file', url);
+    params.append('upload_preset', uploadPreset);
+
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: 'POST',
+      body: params
+    });
+
+    const data = await res.json();
+    if (data.secure_url) {
+      console.log(`[Cloudinary] Successfully uploaded and optimized Pollinations image.`);
+      return data.secure_url;
+    } else {
+      console.error(`[Cloudinary API Error]:`, data);
+      return url;
+    }
+  } catch (e) {
+    console.error(`[Cloudinary Upload Exception]:`, e);
+    return url;
+  }
+}
+
 // Helper function to safely call Gemini with fallback plans if any model is overloaded or fails
 async function generateContentWithRetry(params: {
   model: string;
@@ -333,6 +364,27 @@ SUMMARY: [your simple English summary]`;
       }
     }
 
+    // Step 4: Map Pollinations/Stock URLs to Cloudinary for instant loading (Optimized Performance)
+    const inlineImageRegex = /<img[^>]+src="([^">]+)"[^>]*>/gi;
+    const urlsToReplace = new Set<string>();
+    match = null; // Reset match
+    while ((match = inlineImageRegex.exec(cleanContent)) !== null) {
+      if (match[1].includes('pollinations.ai') || match[1].includes('unsplash.com')) {
+        urlsToReplace.add(match[1]);
+      }
+    }
+
+    if (process.env.VITE_CLOUDINARY_CLOUD_NAME && process.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+      console.log(`[Cloudinary Optimizer] Uploading ${generatedImages.length} cover images & ${urlsToReplace.size} inline images...`);
+      // Upload covers
+      generatedImages = await Promise.all(generatedImages.map(img => uploadToCloudinary(img)));
+      // Upload inline HTML images
+      for (const url of Array.from(urlsToReplace)) {
+        const secureUrl = await uploadToCloudinary(url);
+        cleanContent = cleanContent.split(url).join(secureUrl);
+      }
+    }
+
     const titleMatch = cleanContent.match(/<h1[^>]*>(.*?)<\/h1>/i);
     const title = titleMatch ? titleMatch[1] : topic;
 
@@ -464,6 +516,29 @@ Ensure your entire generated HTML content is professional, elegant, and matches 
     
     try {
       const parsed = JSON.parse(rawText);
+
+      // Cloudinary Optimization for inline images in fixed SEO
+      let cleanContent = parsed.content;
+      const inlineImageRegex = /<img[^>]+src="([^">]+)"[^>]*>/gi;
+      const urlsToReplace = new Set<string>();
+      let match;
+      while ((match = inlineImageRegex.exec(cleanContent)) !== null) {
+        if (match[1].includes('pollinations.ai') || match[1].includes('unsplash.com')) {
+          urlsToReplace.add(match[1]);
+        }
+      }
+
+      if (process.env.VITE_CLOUDINARY_CLOUD_NAME && process.env.VITE_CLOUDINARY_UPLOAD_PRESET) {
+        if (urlsToReplace.size > 0) {
+          console.log(`[Cloudinary Optimizer] Uploading ${urlsToReplace.size} inline images during SEO Fix...`);
+          for (const url of Array.from(urlsToReplace)) {
+            const secureUrl = await uploadToCloudinary(url);
+            cleanContent = cleanContent.split(url).join(secureUrl);
+          }
+          parsed.content = cleanContent;
+        }
+      }
+
       res.json(parsed);
     } catch (parseError) {
       console.error("JSON parse failed. Raw Text was:", rawText);
