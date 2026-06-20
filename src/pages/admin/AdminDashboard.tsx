@@ -123,10 +123,15 @@ export function AdminDashboard() {
       });
 
       if (!response.ok) {
-        let errMsg = 'Failed to ideate topics. Make sure server is running.';
+        let errMsg = `HTTP Error ${response.status}`;
         try {
-          const errData = await response.json();
-          errMsg = errData.error || errMsg;
+          const rawText = await response.text();
+          try {
+            const errData = JSON.parse(rawText);
+            errMsg = errData.error || rawText;
+          } catch (_) {
+            errMsg = rawText;
+          }
         } catch (_) {}
         throw new Error(errMsg);
       }
@@ -158,10 +163,15 @@ export function AdminDashboard() {
       });
 
       if (!response.ok) {
-        let errMsg = 'API request failed';
+        let errMsg = `HTTP Error ${response.status}`;
         try {
-          const errData = await response.json();
-          errMsg = errData.error || errMsg;
+          const rawText = await response.text();
+          try {
+            const errData = JSON.parse(rawText);
+            errMsg = errData.error || rawText;
+          } catch (_) {
+            errMsg = rawText;
+          }
         } catch (_) {}
         throw new Error(errMsg);
       }
@@ -472,18 +482,20 @@ export function AdminDashboard() {
       });
 
       if (!response.ok) {
-        let errText = 'Failed to generate content';
+        let errText = `HTTP Error ${response.status} ${response.statusText}`;
         try {
-          const errPayload = await response.json();
-          if (errPayload && errPayload.error) {
-            errText = `${errPayload.error}${errPayload.details ? `\n\nDetails:\n${errPayload.details}` : ''}`;
-          }
-        } catch (_) {
-          // If response is not JSON or parsing fails
+          const rawText = await response.text();
           try {
-            errText = await response.text();
-          } catch (_) {}
-        }
+            const errPayload = JSON.parse(rawText);
+            if (errPayload && errPayload.error) {
+              errText = `${errPayload.error}${errPayload.details ? `\n\nDetails:\n${errPayload.details}` : ''}`;
+            } else {
+              errText = rawText || errText;
+            }
+          } catch (_) {
+            errText = rawText || errText;
+          }
+        } catch (_) {}
         throw new Error(errText);
       }
 

@@ -36,14 +36,14 @@ async function generateContentWithRetry(params: {
 }) {
   // Normalize known typos/unsupported models
   let primaryModel = params.model;
-  if (primaryModel === "gemini-3.5-flash-lite") {
-    primaryModel = "gemini-3.1-flash-lite";
+  if (primaryModel === "gemini-3.5-flash-lite" || primaryModel === "gemini-3.1-flash-lite") {
+    primaryModel = "gemini-3.5-flash";
   }
 
   // Chain of fallback models to try if the previous one fails
-  // Force gemini-3.1-flash-lite to respect the user's free plan, avoiding other premium query limitations
+  // Force gemini-3.5-flash to respect the user's free plan, avoiding other premium query limitations
   const modelsToTry = [
-    "gemini-3.1-flash-lite"
+    "gemini-3.5-flash"
   ];
 
   // Keep unique models in the prioritized order
@@ -202,7 +202,7 @@ Requirements:
 5. Create a blueprint that will make the subsequent article incredibly deep, original, engaging, and authoritative.`;
 
     const researchResponse = await generateContentWithRetry({
-      model: "gemini-3.1-flash-lite",
+      model: "gemini-3.5-flash",
       contents: researchPrompt
     });
 
@@ -249,7 +249,7 @@ Additionally, provide a simple English summary (easy to understand) of the artic
 SUMMARY: [your simple English summary]`;
 
     const writeResponse = await generateContentWithRetry({
-      model: "gemini-3.1-flash-lite",
+      model: "gemini-3.5-flash",
       contents: writePrompt
     });
 
@@ -350,9 +350,10 @@ SUMMARY: [your simple English summary]`;
   } catch (error: any) {
     console.error("AI Generation Error:", error);
     const errorMessage = error?.message || String(error);
+    const details = error?.stack || String(error);
     res.status(500).json({ 
       error: `AI Generation Error: ${errorMessage}`,
-      details: error?.stack || String(error)
+      details: details
     });
   }
 });
@@ -374,7 +375,7 @@ Provide ONLY a numbered list of exactly 5 creative, click-worthy, and SEO-optimi
 ...`;
 
     const aiResponse = await getAiClient().models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: {
         role: 'user',
         parts: [{ text: prompt }]

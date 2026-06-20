@@ -81,6 +81,27 @@ service cloud.firestore {
              (!data.keys().hasAny(['isDraft']) || data.isDraft is bool);
     }
 
+    function isValidPromoCampaign(data) {
+      return data.keys().hasAll(['id', 'label', 'title', 'description', 'linkUrl', 'btnText', 'status']) &&
+             data.id is string && data.id.size() <= 100 &&
+             data.label is string && data.label.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.linkUrl is string && data.linkUrl.size() <= 1000 &&
+             data.btnText is string && data.btnText.size() <= 100 &&
+             (data.status == 'active' || data.status == 'inactive') &&
+             (!data.keys().hasAny(['updatedAt']) || (data.updatedAt is int));
+    }
+    
+    function isValidSystemError(data) {
+      return data.keys().hasAll(['message', 'context', 'timestamp', 'userId']) &&
+             data.keys().size() == 4 &&
+             data.message is string && data.message.size() <= 5000 &&
+             data.context is string && data.context.size() <= 10000 &&
+             data.timestamp is string && data.timestamp.size() <= 50 &&
+             data.userId is string && data.userId.size() <= 128;
+    }
+
     // 1. Articles Collection rules
     match /articles/{postId} {
       allow read: if true;
@@ -164,6 +185,22 @@ service cloud.firestore {
       allow create: if isBlogAdmin() && isValidId(adId) && isValidAd(incoming());
       allow update: if isBlogAdmin() && isValidId(adId) && isValidAd(incoming());
       allow delete: if isBlogAdmin() && isValidId(adId);
+    }
+    
+    // 7. Promo Campaigns Collection rules
+    match /promo_campaigns/{promoId} {
+      allow read: if true;
+      allow create: if isBlogAdmin() && isValidId(promoId) && isValidPromoCampaign(incoming());
+      allow update: if isBlogAdmin() && isValidId(promoId) && isValidPromoCampaign(incoming());
+      allow delete: if isBlogAdmin() && isValidId(promoId);
+    }
+
+    // 8. System Errors Collection rules
+    match /system_errors/{errorId} {
+      allow read: if isBlogAdmin();
+      allow create: if isValidId(errorId) && isValidSystemError(incoming());
+      allow update: if false;
+      allow delete: if isBlogAdmin();
     }
   }
 }
