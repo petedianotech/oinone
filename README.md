@@ -1,20 +1,41 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# OINONE
 
-# Run and deploy your AI Studio app
+**Online business & tech guide** — practical articles and resources for builders and entrepreneurs.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/ac2d3137-06fd-4d06-b18c-691ce92bd1ef
+## Overview
 
-## Run Locally
+OINONE is a content-focused web project covering business, technology, and practical guides. Built as a modern TypeScript application and deployed for easy access.
 
-**Prerequisites:**  Node.js
+---
 
+## Tech stack
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- TypeScript
+- React / Vite-based frontend
+- Deployed for web access
+
+---
+
+## Local development
+
+```bash
+npm install
+npm run dev
+```
+
+If the project uses Gemini or other AI features, set the required API keys in `.env.local` as documented in the source.
+
+---
+
+## Author
+
+**Peter Damiano**  
+Portfolio: [peterdamiano.vercel.app](https://peterdamiano.vercel.app)
+
+---
+
+## License
+
+See repository for license details.
