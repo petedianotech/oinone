@@ -14,7 +14,6 @@ import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-// Lazy load non-critical routes for better initial load
 const CategoryPage = lazy(() =>
   import('./pages/CategoryPage').then((m) => ({ default: m.CategoryPage }))
 );
@@ -47,7 +46,7 @@ const Support = lazy(() =>
 
 function SuspenseLoader() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-[#0a0a0b]">
+    <div className="min-h-[60vh] flex items-center justify-center bg-zinc-50">
       <div className="flex flex-col items-center gap-3">
         <div className="spinner" />
         <span className="text-xs text-zinc-500 font-medium tracking-wide">
@@ -60,11 +59,9 @@ function SuspenseLoader() {
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-
   return null;
 }
 
@@ -73,11 +70,11 @@ function AppContent() {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('dark');
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a0b] text-white overflow-x-hidden w-full">
+    <div className="flex flex-col min-h-screen bg-zinc-50 text-zinc-900 overflow-x-hidden w-full">
       {!isAdminPage && <Navbar />}
       <main className="flex-grow pt-14">
         <ErrorBoundary>
