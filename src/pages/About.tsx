@@ -3,12 +3,9 @@ import { ArrowLeft, Mail, Globe } from 'lucide-react';
 
 export function About() {
   return (
-    <div className="min-h-screen bg-[#0a0a0b]">
+    <div className="min-h-screen bg-zinc-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors mb-10"
-        >
+        <Link to="/" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors mb-10">
           <ArrowLeft className="w-4 h-4" />
           Back to home
         </Link>
@@ -17,73 +14,47 @@ export function About() {
           <img
             src="https://i.ibb.co/cXpLmLVC/20260516-210805.jpg"
             alt="Peter Damiano"
-            className="w-28 h-28 rounded-full object-cover border border-zinc-800"
+            className="w-28 h-28 rounded-full object-cover border border-zinc-200"
             width={112}
             height={112}
           />
           <div>
-            <h1 className="text-3xl font-semibold text-white tracking-tight mb-2">
-              Peter Damiano
-            </h1>
-            <p className="text-indigo-400 font-medium mb-1">Founder & Editor, Oinone</p>
+            <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight mb-2">Peter Damiano</h1>
+            <p className="text-indigo-600 font-medium mb-1">Founder & Editor, Oinone</p>
             <p className="text-sm text-zinc-500 mb-4">
-              Developer, product builder, and writer focused on practical technology, finance, and online business.
+              Developer and writer focused on practical technology, finance, and online business.
             </p>
-            <div className="flex gap-3">
-              <a
-                href="https://peterdamiano.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
-              >
+            <div className="flex gap-4">
+              <a href="https://peterdamiano.vercel.app" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900">
                 <Globe className="w-4 h-4" /> Portfolio
               </a>
-              <a
-                href="mailto:peterleodamiano@gmail.com"
-                className="inline-flex items-center gap-1.5 text-sm text-zinc-400 hover:text-white transition-colors"
-              >
+              <a href="mailto:peterleodamiano@gmail.com" className="inline-flex items-center gap-1.5 text-sm text-zinc-600 hover:text-zinc-900">
                 <Mail className="w-4 h-4" /> Contact
               </a>
             </div>
           </div>
         </div>
 
-        <div className="space-y-6 text-[15px] leading-relaxed text-zinc-300">
+        <div className="space-y-6 text-[15px] leading-relaxed text-zinc-700">
           <p>
-            Oinone is a focused publication on finance, technology, artificial intelligence, and building online.
+            Oinone is a focused publication on finance, technology, AI, and building online.
             The goal is clear, useful writing — not hype.
           </p>
           <p>
-            Articles are written for builders, operators, and readers who want practical frameworks they can apply.
-            Topics range from personal finance systems and investing psychology to production AI, web performance, and digital product strategy.
-          </p>
-          <p>
-            The site is independently operated. For inquiries, partnerships, or corrections, email{' '}
-            <a href="mailto:peterleodamiano@gmail.com" className="text-indigo-400 hover:underline">
+            For inquiries: {' '}
+            <a href="mailto:peterleodamiano@gmail.com" className="text-indigo-600 hover:underline">
               peterleodamiano@gmail.com
-            </a>.
+            </a>
           </p>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-zinc-800">
-          <h2 className="text-lg font-semibold text-white mb-4">On this site</h2>
-          <ul className="space-y-2 text-sm text-zinc-400">
-            <li>
-              <Link to="/finance" className="hover:text-white transition-colors">Finance</Link>
-              {' — '}systems, investing basics, and money habits
-            </li>
-            <li>
-              <Link to="/technology" className="hover:text-white transition-colors">Technology</Link>
-              {' — '}engineering practices and product infrastructure
-            </li>
-            <li>
-              <Link to="/ai" className="hover:text-white transition-colors">Artificial Intelligence</Link>
-              {' — '}practical AI for product and engineering teams
-            </li>
-            <li>
-              <Link to="/mmo" className="hover:text-white transition-colors">Online Business</Link>
-              {' — '}pricing, content, and product-led growth
-            </li>
+        <div className="mt-12 pt-8 border-t border-zinc-200">
+          <h2 className="text-lg font-semibold text-zinc-900 mb-4">On this site</h2>
+          <ul className="space-y-2 text-sm text-zinc-600">
+            <li><Link to="/finance" className="text-indigo-600 hover:underline">Finance</Link> — systems, investing basics, money habits</li>
+            <li><Link to="/technology" className="text-indigo-600 hover:underline">Technology</Link> — engineering practices and infrastructure</li>
+            <li><Link to="/ai" className="text-indigo-600 hover:underline">AI</Link> — practical AI for product and engineering teams</li>
+            <li><Link to="/mmo" className="text-indigo-600 hover:underline">Online Business</Link> — pricing, content, and growth</li>
           </ul>
         </div>
       </div>
