@@ -1,73 +1,82 @@
 import { Link } from 'react-router-dom';
 import { Post } from '../types';
 import { CATEGORIES, cn, optimizeImageUrl } from '../lib/utils';
-import { Clock, Eye, ArrowRight } from 'lucide-react';
-import { motion } from 'motion/react';
-import React from 'react';
+import { Clock, Eye } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import React from 'react';
 
 interface ArticleCardProps {
-  key?: React.Key;
   post: Post;
   variant?: 'featured' | 'compact' | 'standard';
   className?: string;
-  theme?: 'light' | 'dark'; // We force dark anyway mostly, but keep for compat
   isPrioritized?: boolean;
 }
 
-export function ArticleCard({ post, variant = 'standard', className, theme = 'dark', isPrioritized = false }: ArticleCardProps) {
-  const category = CATEGORIES[post.categoryId] || { name: post.categoryId, color: 'text-white' };
+export function ArticleCard({
+  post,
+  variant = 'standard',
+  className,
+  isPrioritized = false,
+}: ArticleCardProps) {
+  const category = CATEGORIES[post.categoryId] || {
+    name: post.categoryId,
+    color: 'text-white',
+  };
 
   if (variant === 'featured') {
     return (
-      <Link to={`/article/${post.id}`} className={cn("group flex flex-col h-full bg-[#121216] rounded-3xl overflow-hidden glass-panel hover-glass transition-all duration-300 relative isolation-auto", className)}>
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-purple/10 to-brand-cyan/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-        <div className="relative h-64 sm:h-72 overflow-hidden">
-          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10" />
-          <img 
-            src={optimizeImageUrl(post.imageUrl, 800)} 
-            alt={post.title} 
-            className="h-full w-full object-cover transition-transform duration-[2s] group-hover:scale-105"
+      <Link
+        to={`/article/${post.id}`}
+        className={cn(
+          'group flex flex-col h-full rounded-xl overflow-hidden border border-zinc-800 bg-[#111113] hover:border-zinc-700 transition-colors',
+          className
+        )}
+      >
+        <div className="relative aspect-[16/9] overflow-hidden bg-zinc-900">
+          <img
+            src={optimizeImageUrl(post.imageUrl, 800)}
+            alt={post.title}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
           />
         </div>
-        <div className="flex flex-col flex-1 p-6 relative z-10">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
-              <span className="inline-flex items-center rounded-full bg-white/10 border border-white/10 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest backdrop-blur-md">
-                {category.name}
-              </span>
-              {isPrioritized && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 border border-cyan-500/30 px-3 py-1 text-[10px] font-bold text-cyan-400 uppercase tracking-widest backdrop-blur-md animate-pulse">
-                  ★ Personalized
-                </span>
-              )}
-            </div>
-            <span className="flex items-center text-xs font-semibold text-gray-400 gap-1.5">
+        <div className="flex flex-col flex-1 p-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="text-xs font-medium text-indigo-400">
+              {category.name}
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-zinc-500">
               <Clock className="h-3.5 w-3.5" />
-              {post.readTime} min read
+              {post.readTime} min
             </span>
           </div>
-          <h3 className="font-display text-2xl font-bold text-white mb-3 group-hover:text-brand-purple transition-colors leading-tight">
+          <h3 className="text-xl font-semibold text-white leading-snug mb-2 group-hover:text-indigo-300 transition-colors line-clamp-2">
             {post.title}
           </h3>
-          <p className="text-gray-400 text-sm line-clamp-2 mb-6 font-medium">
+          <p className="text-sm text-zinc-400 line-clamp-2 mb-5 flex-1">
             {post.excerpt}
           </p>
-          <div className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#a855f7] group-hover:text-cyan-400 transition-colors">
-            <span>Read Article</span>
-            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 duration-200" />
-          </div>
-          <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-4">
-            <div className="flex items-center space-x-3">
-              <img src={post.author.avatar} alt={post.author.name} className="h-8 w-8 rounded-full border border-white/20" />
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+            <div className="flex items-center gap-3">
+              <img
+                src={post.author.avatar}
+                alt={post.author.name}
+                className="h-8 w-8 rounded-full object-cover"
+                loading="lazy"
+              />
               <div>
-                <div className="text-sm font-bold text-white">{post.author.name}</div>
-                <div className="text-[10px] text-gray-500 uppercase tracking-widest">{formatDistanceToNow(new Date(post.date))} ago</div>
+                <div className="text-sm font-medium text-zinc-200">
+                  {post.author.name}
+                </div>
+                <div className="text-xs text-zinc-500">
+                  {formatDistanceToNow(new Date(post.date))} ago
+                </div>
               </div>
             </div>
-            {post.viewsCount && (
-              <span className="flex items-center text-xs font-semibold text-gray-500 gap-1">
-                <Eye className="w-3.5 h-3.5" /> {post.viewsCount}
+            {post.viewsCount != null && (
+              <span className="flex items-center gap-1 text-xs text-zinc-500">
+                <Eye className="w-3.5 h-3.5" />
+                {post.viewsCount}
               </span>
             )}
           </div>
@@ -78,24 +87,31 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
 
   if (variant === 'compact') {
     return (
-      <Link to={`/article/${post.id}`} className={cn("group flex gap-4 items-start p-3 rounded-2xl hover:bg-white/5 transition-colors", className)}>
-        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-[#121216]">
-           <img 
-            src={optimizeImageUrl(post.imageUrl, 200)} 
-            alt={post.title} 
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-80 group-hover:opacity-100"
+      <Link
+        to={`/article/${post.id}`}
+        className={cn(
+          'group flex gap-4 items-start p-3 rounded-lg hover:bg-zinc-900/60 transition-colors',
+          className
+        )}
+      >
+        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-900">
+          <img
+            src={optimizeImageUrl(post.imageUrl, 200)}
+            alt={post.title}
+            className="h-full w-full object-cover"
+            loading="lazy"
           />
         </div>
-        <div className="flex flex-col justify-center gap-1 w-full">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-brand-purple">
+        <div className="flex flex-col justify-center min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-indigo-400 mb-0.5">
             {category.name}
           </p>
-          <h3 className="font-display text-sm font-bold text-white leading-tight line-clamp-2 group-hover:text-brand-cyan transition-colors">
+          <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2 group-hover:text-indigo-300 transition-colors">
             {post.title}
           </h3>
-          <div className="flex items-center mt-1 text-[10px] text-gray-500 gap-1.5 uppercase tracking-wider font-semibold">
+          <div className="flex items-center mt-1 text-[11px] text-zinc-500 gap-1.5">
             <span>{post.readTime} min</span>
-            <span className="w-1 h-1 rounded-full bg-gray-700" />
+            <span>·</span>
             <span>{formatDistanceToNow(new Date(post.date))}</span>
           </div>
         </div>
@@ -103,107 +119,109 @@ export function ArticleCard({ post, variant = 'standard', className, theme = 'da
     );
   }
 
-  // Standard Layered Card
+  // Standard card
   return (
-    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }} className={cn("group flex flex-col h-full bg-white dark:bg-[#121216]/50 rounded-[2rem] overflow-hidden glass-panel hover-glass transition-all relative border-t border-gray-100 dark:border-white/5", className)}>
-      <Link to={`/article/${post.id}`} className="block relative h-56 mx-2 mt-2 overflow-hidden rounded-[1.5rem]">
-        <img 
-          src={optimizeImageUrl(post.imageUrl, 600)} 
-          alt={post.title} 
+    <article
+      className={cn(
+        'group flex flex-col h-full rounded-xl overflow-hidden border border-zinc-800 bg-[#111113] hover:border-zinc-700 transition-colors',
+        className
+      )}
+    >
+      <Link to={`/article/${post.id}`} className="block relative aspect-[16/10] overflow-hidden bg-zinc-900">
+        <img
+          src={optimizeImageUrl(post.imageUrl, 600)}
+          alt={post.title}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 opacity-90 group-hover:opacity-100"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
         />
-        <div className="absolute top-3 left-3 flex gap-2">
-           <span className="inline-flex items-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest">
-              {category.name}
-           </span>
-           {isPrioritized && (
-             <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/80 backdrop-blur-md border border-cyan-400 px-3 py-1 text-[10px] font-bold text-white uppercase tracking-widest shadow-md shadow-cyan-500/20">
-               ★ Prioritized
-             </span>
-           )}
+        <div className="absolute top-3 left-3">
+          <span className="inline-flex items-center rounded-md bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white">
+            {category.name}
+          </span>
         </div>
       </Link>
-      <div className="flex flex-col flex-1 p-6 relative z-10">
+
+      <div className="flex flex-col flex-1 p-5">
         <Link to={`/article/${post.id}`} className="block flex-1">
-          <h3 className="font-display text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-brand-blue dark:group-hover:text-cyan-300 transition-colors line-clamp-2 leading-tight">
+          <h3 className="text-lg font-semibold text-white leading-snug mb-2 group-hover:text-indigo-300 transition-colors line-clamp-2">
             {post.title}
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4 font-medium">
+          <p className="text-sm text-zinc-400 line-clamp-2 mb-4">
             {post.excerpt}
           </p>
         </Link>
-        <div className="mb-2 mt-1">
-          <Link to={`/article/${post.id}`} className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-600 hover:text-indigo-800 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors group/btn">
-            <span>Read Article</span>
-            <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-1 duration-200" />
-          </Link>
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
-           <div className="flex items-center space-x-3">
-            <img src={post.author.avatar} alt={post.author.name} className="h-7 w-7 rounded-full border border-gray-200 dark:border-white/10" loading="lazy" />
+
+        <div className="pt-4 border-t border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img
+              src={post.author.avatar}
+              alt={post.author.name}
+              className="h-7 w-7 rounded-full object-cover"
+              loading="lazy"
+            />
             <div className="flex flex-col">
-              <span className="text-xs font-bold text-gray-900 dark:text-gray-200">{post.author.name}</span>
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">{formatDistanceToNow(new Date(post.date))} ago</span>
+              <span className="text-xs font-medium text-zinc-200">
+                {post.author.name}
+              </span>
+              <span className="text-[11px] text-zinc-500">
+                {formatDistanceToNow(new Date(post.date))} ago
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <span className="flex items-center text-[10px] uppercase tracking-widest font-bold text-gray-500">
-                <Clock className="mr-1 h-3 w-3" />
-                {post.readTime} min
-              </span>
-          </div>
+          <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+            <Clock className="h-3 w-3" />
+            {post.readTime} min
+          </span>
         </div>
       </div>
-    </motion.div>
+    </article>
   );
 }
 
-export function ArticleSkeleton({ variant = 'standard', className }: { variant?: 'featured' | 'compact' | 'standard', className?: string, key?: import('react').Key }) {
+export function ArticleSkeleton({
+  variant = 'standard',
+  className,
+}: {
+  variant?: 'featured' | 'compact' | 'standard';
+  className?: string;
+}) {
   if (variant === 'featured') {
     return (
-      <div className={cn("relative block overflow-hidden rounded-3xl bg-[#121216] animate-pulse border border-white/5", className)}>
-         <div className="h-64 sm:h-72 bg-white/5" />
-         <div className="p-6">
-           <div className="h-6 w-20 bg-white/10 rounded-full mb-4" />
-           <div className="h-8 w-3/4 bg-white/10 rounded-xl mb-3" />
-           <div className="h-4 w-1/2 bg-white/5 rounded-xl mb-6" />
-           <div className="flex items-center gap-3 mt-4 pt-4 border-t border-white/5">
-             <div className="w-8 h-8 rounded-full bg-white/10" />
-             <div className="h-4 w-24 bg-white/5 rounded-md" />
-           </div>
-         </div>
+      <div className={cn('rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden animate-pulse', className)}>
+        <div className="aspect-[16/9] bg-zinc-900" />
+        <div className="p-6 space-y-3">
+          <div className="h-3 w-20 bg-zinc-800 rounded" />
+          <div className="h-6 w-3/4 bg-zinc-800 rounded" />
+          <div className="h-4 w-full bg-zinc-800/60 rounded" />
+          <div className="h-4 w-2/3 bg-zinc-800/60 rounded" />
+        </div>
       </div>
     );
   }
 
   if (variant === 'compact') {
     return (
-      <div className={cn("flex gap-4 items-start p-3 animate-pulse", className)}>
-        <div className="relative h-20 w-20 flex-shrink-0 rounded-xl bg-white/5" />
-        <div className="flex flex-col justify-center gap-2 mt-1 w-full">
-          <div className="h-3 w-16 bg-white/10 rounded" />
-          <div className="h-4 w-full bg-white/10 rounded" />
-          <div className="h-4 w-2/3 bg-white/5 rounded" />
+      <div className={cn('flex gap-4 p-3 animate-pulse', className)}>
+        <div className="h-16 w-16 rounded-lg bg-zinc-800 flex-shrink-0" />
+        <div className="flex-1 space-y-2 pt-1">
+          <div className="h-3 w-16 bg-zinc-800 rounded" />
+          <div className="h-4 w-full bg-zinc-800 rounded" />
+          <div className="h-3 w-2/3 bg-zinc-800/60 rounded" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className={cn("flex flex-col h-full bg-[#121216]/50 rounded-[2rem] overflow-hidden border border-white/5 animate-pulse", className)}>
-      <div className="mx-2 mt-2 h-48 sm:h-56 rounded-[1.5rem] bg-white/5" />
-      <div className="flex flex-col flex-1 p-6">
-        <div className="h-6 w-11/12 bg-white/10 rounded-xl mb-3" />
-        <div className="h-6 w-3/4 bg-white/10 rounded-xl mb-6" />
-        <div className="h-4 w-full bg-white/5 rounded-md mb-2" />
-        <div className="h-4 w-2/3 bg-white/5 rounded-md" />
-        <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-           <div className="flex items-center space-x-3">
-            <div className="h-7 w-7 rounded-full bg-white/10" />
-            <div className="h-3 w-20 bg-white/5 rounded" />
-          </div>
-          <div className="h-3 w-12 bg-white/5 rounded" />
+    <div className={cn('rounded-xl border border-zinc-800 bg-[#111113] overflow-hidden animate-pulse', className)}>
+      <div className="aspect-[16/10] bg-zinc-900" />
+      <div className="p-5 space-y-3">
+        <div className="h-5 w-11/12 bg-zinc-800 rounded" />
+        <div className="h-4 w-full bg-zinc-800/60 rounded" />
+        <div className="h-4 w-2/3 bg-zinc-800/60 rounded" />
+        <div className="pt-4 border-t border-zinc-800 flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-zinc-800" />
+          <div className="h-3 w-20 bg-zinc-800 rounded" />
         </div>
       </div>
     </div>
