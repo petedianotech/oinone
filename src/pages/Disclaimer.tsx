@@ -1,47 +1,90 @@
-import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 export function Disclaimer() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="min-h-screen pt-24 bg-gray-50 dark:bg-gray-950 transition-colors"
-    >
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Back navigation */}
-        <div className="mb-6 flex justify-start">
-          <Link 
-            to="/" 
-            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 transition-colors uppercase tracking-widest"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Go Back Home</span>
-          </Link>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0b]">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors mb-10"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to home
+        </Link>
 
-        <h1 className="font-display text-4xl font-bold text-gray-950 dark:text-white mb-4">Disclaimer</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Last updated: June 9, 2026</p>
-        
-        <div className="prose prose-indigo dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 space-y-6 leading-relaxed">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight mb-3">
+          Disclaimer
+        </h1>
+        <p className="text-sm text-zinc-500 mb-10">Last updated: November 21, 2026</p>
+
+        <div className="space-y-8 text-[15px] leading-relaxed text-zinc-300">
           <p>
-            Oinone, a platform created and developed exclusively by Peter Damiano, offers educational content. 
-            All content generated, including AI-assisted materials, are provided for informational and educational purposes only.
+            The information on Oinone is provided for general informational and educational
+            purposes only. It should not be relied upon as professional advice.
           </p>
 
-          <h2 className="font-display text-xl font-bold text-gray-950 dark:text-white mt-8 mb-2">1. No Professional Advice</h2>
-          <p>
-            The content on this website does not constitute financial, investment, legal, or other professional advice. 
-            Always seek the guidance of a qualified professional regarding financial decisions or any subject matter discussed on Oinone.
-          </p>
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">Financial & Investment Content</h2>
+            <p>
+              Articles about markets, investing, personal finance, or making money online are
+              not financial, investment, tax, or legal advice. Past performance does not
+              guarantee future results. You are solely responsible for your financial decisions.
+              Consult a licensed advisor before investing or changing your financial plans.
+            </p>
+          </section>
 
-          <h2 className="font-display text-xl font-bold text-gray-950 dark:text-white mt-8 mb-2">2. AI-Generated Content</h2>
-          <p>
-            Some articles and visual content on Oinone may be generated or assisted by artificial intelligence. While Peter Damiano reviews all content before publication to ensure quality and relevance, we make no representations or warranties of any kind regarding the absolute accuracy or completeness of such content.
-          </p>
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">Technology & AI Content</h2>
+            <p>
+              Technical explanations, product discussions, and AI-related content reflect the
+              author’s understanding at the time of writing. Technology changes quickly. Always
+              verify details against official documentation and current best practices before
+              implementing anything in production.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">Affiliate & Advertising</h2>
+            <p>
+              Oinone may contain affiliate links or third-party advertisements (including Google
+              AdSense). We may earn a commission or revenue if you click or purchase through
+              those links. This does not affect the price you pay. We aim for honest coverage
+              and disclose relationships where appropriate.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">External Links</h2>
+            <p>
+              The site may link to external websites. We are not responsible for the content,
+              accuracy, or practices of third-party sites. Visiting them is at your own risk.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">No Warranties</h2>
+            <p>
+              Content is provided "as is" without warranties of completeness, accuracy, or
+              fitness for a particular purpose. Oinone and Peter Damiano accept no liability for
+              any loss or damage arising from use of or reliance on the site.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-white mb-3">Contact</h2>
+            <p>
+              Questions:{' '}
+              <a
+                href="mailto:peterleodamiano@gmail.com"
+                className="text-indigo-400 hover:underline"
+              >
+                peterleodamiano@gmail.com
+              </a>
+            </p>
+          </section>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
