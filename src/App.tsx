@@ -14,23 +14,45 @@ import { useLocation } from 'react-router-dom';
 import { BlogProvider } from './lib/BlogContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-// Lazy load non-critical heavy routes for massive chunk speed gains
-const CategoryPage = lazy(() => import('./pages/CategoryPage').then(m => ({ default: m.CategoryPage })));
-const ArticlePage = lazy(() => import('./pages/ArticlePage').then(m => ({ default: m.ArticlePage })));
-const About = lazy(() => import('./pages/About').then(m => ({ default: m.About })));
-const Privacy = lazy(() => import('./pages/Privacy').then(m => ({ default: m.Privacy })));
-const Terms = lazy(() => import('./pages/Terms').then(m => ({ default: m.Terms })));
-const Disclaimer = lazy(() => import('./pages/Disclaimer').then(m => ({ default: m.Disclaimer })));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const OffersVault = lazy(() => import('./pages/OffersVault').then(m => ({ default: m.OffersVault })));
-const Support = lazy(() => import('./pages/Support').then(m => ({ default: m.Support })));
+// Lazy load non-critical routes for better initial load
+const CategoryPage = lazy(() =>
+  import('./pages/CategoryPage').then((m) => ({ default: m.CategoryPage }))
+);
+const ArticlePage = lazy(() =>
+  import('./pages/ArticlePage').then((m) => ({ default: m.ArticlePage }))
+);
+const About = lazy(() =>
+  import('./pages/About').then((m) => ({ default: m.About }))
+);
+const Privacy = lazy(() =>
+  import('./pages/Privacy').then((m) => ({ default: m.Privacy }))
+);
+const Terms = lazy(() =>
+  import('./pages/Terms').then((m) => ({ default: m.Terms }))
+);
+const Disclaimer = lazy(() =>
+  import('./pages/Disclaimer').then((m) => ({ default: m.Disclaimer }))
+);
+const AdminDashboard = lazy(() =>
+  import('./pages/admin/AdminDashboard').then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
+const OffersVault = lazy(() =>
+  import('./pages/OffersVault').then((m) => ({ default: m.OffersVault }))
+);
+const Support = lazy(() =>
+  import('./pages/Support').then((m) => ({ default: m.Support }))
+);
 
 function SuspenseLoader() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-[#0a0a0c]">
+    <div className="min-h-[60vh] flex items-center justify-center bg-[#0a0a0b]">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-brand-cyan/20 border-t-brand-cyan animate-spin" />
-        <span className="text-[10px] uppercase tracking-widest text-[#06b6d4]/60 font-mono">Loading...</span>
+        <div className="spinner" />
+        <span className="text-xs text-zinc-500 font-medium tracking-wide">
+          Loading
+        </span>
       </div>
     </div>
   );
@@ -55,9 +77,9 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a0c] text-white overflow-x-hidden w-full relative">
+    <div className="flex flex-col min-h-screen bg-[#0a0a0b] text-white overflow-x-hidden w-full">
       {!isAdminPage && <Navbar />}
-      <div className="flex-grow">
+      <main className="flex-grow pt-14">
         <ErrorBoundary>
           <Suspense fallback={<SuspenseLoader />}>
             <Routes>
@@ -77,7 +99,7 @@ function AppContent() {
             </Routes>
           </Suspense>
         </ErrorBoundary>
-      </div>
+      </main>
       {!isAdminPage && <Footer />}
       <PWAPrompt />
       <OfflineNotification />
@@ -95,4 +117,3 @@ export default function App() {
     </BlogProvider>
   );
 }
-
