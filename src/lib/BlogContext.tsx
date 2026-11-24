@@ -5,6 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Post, CategoryId, PromoCampaign } from '../types';
 import { subscribeToArticles } from './blogService';
 import { subscribeToPromos, updatePromoCampaign, DEFAULT_PROMOS } from './promoService';
+import { MOCK_POSTS } from '../data/mockData';
 
 interface BlogContextType {
   posts: Post[];
@@ -28,9 +29,15 @@ export const BlogProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [posts, setPosts] = useState<Post[]>(() => {
     try {
       const cached = safeGetItem('oinone_cached_posts');
-      return cached ? JSON.parse(cached) : [];
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length >= 20) {
+          return parsed;
+        }
+      }
+      return MOCK_POSTS;
     } catch {
-      return [];
+      return MOCK_POSTS;
     }
   });
   const [promos, setPromos] = useState<Record<PromoCampaign['id'], PromoCampaign>>(() => {

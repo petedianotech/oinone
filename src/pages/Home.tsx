@@ -78,9 +78,8 @@ export function Home() {
     { id: 'all', name: 'All', icon: Compass },
     { id: 'finance', name: 'Finance', icon: Coins },
     { id: 'technology', name: 'Technology', icon: Cpu },
-    { id: 'mmo', name: 'Business', icon: Zap },
     { id: 'ai', name: 'AI', icon: Sparkles },
-    { id: 'cyber', name: 'Security', icon: Shield },
+    { id: 'mmo', name: 'Online Business', icon: Zap },
   ];
 
   let displayPosts = !loading ? [...posts] : [];

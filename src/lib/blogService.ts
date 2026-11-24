@@ -105,48 +105,44 @@ export async function seedPostsIfEmpty(): Promise<Post[]> {
     const q = collection(db, path);
     const snap = await getDocs(q);
     
-    if (snap.empty) {
-      console.log('[Firestore Seeding]: No articles found. Seeding default high-resolution posts...');
-      const batch = writeBatch(db);
-      
-      for (const post of MOCK_POSTS) {
-        const docRef = doc(db, 'articles', post.id);
-        // Map fields explicitly corresponding to the validator schema
-        batch.set(docRef, {
-          id: post.id,
-          title: post.title,
-          excerpt: post.excerpt,
-          content: post.content,
-          categoryId: post.categoryId,
-          author: {
-            id: post.author.id,
-            name: post.author.name,
-            avatar: post.author.avatar,
-            role: post.author.role
-          },
-          date: post.date,
-          readTime: Number(post.readTime),
-          imageUrl: post.imageUrl,
-          featured: !!post.featured,
-          trending: !!post.trending,
-          likesCount: 0,
-          viewsCount: 0,
-          commentsCount: 0
-        });
-      }
-      
-      await batch.commit();
-      console.log('[Firestore Seeding]: Successfully seeded default set.');
-      return MOCK_POSTS;
-    } else {
-      const posts: Post[] = [];
-      snap.forEach((doc) => {
-        posts.push(doc.data() as Post);
-      });
-      return posts;
+    // Always upsert MOCK_POSTS to ensure 20+ articles are stored in Firestore
+    const batch = writeBatch(db);
+    for (const post of MOCK_POSTS) {
+      const docRef = doc(db, 'articles', post.id);
+      batch.set(docRef, {
+        id: post.id,
+        title: post.title,
+        excerpt: post.excerpt,
+        content: post.content,
+        categoryId: post.categoryId,
+        author: {
+          id: post.author.id,
+          name: post.author.name,
+          avatar: post.author.avatar,
+          role: post.author.role
+        },
+        date: post.date,
+        readTime: Number(post.readTime),
+        imageUrl: post.imageUrl,
+        featured: !!post.featured,
+        trending: !!post.trending,
+        likesCount: 0,
+        viewsCount: 0,
+        commentsCount: 0
+      }, { merge: true });
     }
+    await batch.commit();
+    console.log('[Firestore Seeding]: Successfully synced all 20+ articles to Firestore.');
+
+    const updatedSnap = await getDocs(q);
+    const posts: Post[] = [];
+    updatedSnap.forEach((doc) => {
+      posts.push(doc.data() as Post);
+    });
+    return posts.length > 0 ? posts : MOCK_POSTS;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
+    return MOCK_POSTS;
   }
 }
 

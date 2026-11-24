@@ -4,7 +4,7 @@ const safeRemoveItem = (k: string) => { try { localStorage.removeItem(k); } catc
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useBlog } from '../lib/BlogContext';
 import { CATEGORIES, cn, optimizeImageUrl } from '../lib/utils';
-import { Clock, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles, Bookmark, Share2, Play, Pause, Square, Volume2, ExternalLink } from 'lucide-react';
+import { Clock, ArrowLeft, MessageSquare, Send, ThumbsUp, Lightbulb, Rocket, Sparkles, Bookmark, Volume2, Play, Pause, Square } from 'lucide-react';
 import { ArticleCard } from '../components/ArticleCard';
 import { ShareButtons } from '../components/ShareButtons';
 import { motion, useScroll, useSpring } from 'motion/react';
@@ -15,9 +15,7 @@ import Markdown from 'react-markdown';
 
 export function ArticlePage() {
   const { articleId } = useParams<{ articleId: string }>();
-  const { getPost, posts, loading, promos } = useBlog();
-  const sidebarPromo = promos?.article_sidebar_block;
-  const bottomBannerPromo = promos?.article_inline_banner;
+  const { getPost, posts, loading } = useBlog();
   
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -39,7 +37,6 @@ export function ArticlePage() {
   const [submittingComment, setSubmittingComment] = useState(false);
   
   const [likesCount, setLikesCount] = useState<number | null>(null);
-  const [showSummary, setShowSummary] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Speech System States
@@ -71,8 +68,9 @@ export function ArticlePage() {
       setReactions({ like: false, informative: false, inspiring: false, mindBlown: false });
     }
 
-    // Stop ongoing speaks on change
-    window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlayingSpeech(false);
     setIsPausedSpeech(false);
   }, [articleId]);
@@ -93,7 +91,7 @@ export function ArticlePage() {
         } catch {}
       },
       (error) => {
-        console.error('[ArticlePage]: Loading comment thread. Default to offline cache.', error);
+        console.warn('[ArticlePage]: Loading comment thread fallback.', error);
         try {
           const cachedComments = safeGetItem(`offline_comments_${articleId}`);
           if (cachedComments) setComments(JSON.parse(cachedComments));
@@ -103,109 +101,82 @@ export function ArticlePage() {
 
     return () => {
       unsubscribeComments();
-      window.speechSynthesis.cancel();
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, [articleId]);
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-24 bg-[#0a0a0c]">
-        <div className="max-w-4xl mx-auto px-4 h-[60vh] rounded-3xl bg-[#121216] animate-pulse">
-           <div className="flex items-center justify-center h-full">
-             <div className="flex flex-col items-center gap-4">
-                 <Sparkles className="w-8 h-8 text-white/50 animate-bounce" />
-                 <p className="text-white/50 font-bold tracking-widest uppercase text-xs">Loading Article...</p>
-             </div>
-           </div>
-         </div>
+      <div className="min-h-screen py-24 bg-zinc-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="spinner" />
+          <p className="text-sm text-zinc-500 font-medium">Loading article...</p>
+        </div>
       </div>
     );
   }
 
-  const post = getPost(articleId || '');
+  const post = articleId ? getPost(articleId) : undefined;
 
   if (!post) {
     return <Navigate to="/" replace />;
   }
 
-  // TTS Reader
+  const category = CATEGORIES[post.categoryId];
+  const activeLikesCount = likesCount !== null ? likesCount : (post.likesCount || 0);
+
   const speakArticle = () => {
-    if (isPlayingSpeech) {
-      if (isPausedSpeech) {
-        window.speechSynthesis.resume();
-        setIsPausedSpeech(false);
-      } else {
-        window.speechSynthesis.pause();
-        setIsPausedSpeech(true);
-      }
+    if (!('speechSynthesis' in window)) {
+      alert('Your browser does not support audio narration.');
       return;
     }
 
-    // Modern Chrome/browser fix: cancel first to clear background queues
+    if (isPlayingSpeech && isPausedSpeech) {
+      window.speechSynthesis.resume();
+      setIsPausedSpeech(false);
+      return;
+    }
+
+    if (isPlayingSpeech && !isPausedSpeech) {
+      window.speechSynthesis.pause();
+      setIsPausedSpeech(true);
+      return;
+    }
+
     window.speechSynthesis.cancel();
 
-    // Small delay ensures the browser audio engine finishes the cancellation pipeline
-    setTimeout(() => {
-      const cleanTextHTML = (htmlStr: string) => {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = htmlStr;
-        return tmp.textContent || tmp.innerText || '';
-      };
+    const cleanContent = post.content.map(p => p.replace(/<[^>]*>?/gm, '').replace(/[#*`_~]/g, '')).join('. ');
+    const fullText = `${post.title}. Written by ${post.author.name}. ${post.excerpt}. ${cleanContent}`;
 
-      // Split text into short, highly stable segments to fully avoid browser length/character limit cuts
-      const textSegments: string[] = [];
-      if (post.title) textSegments.push(post.title);
-      if (post.excerpt) textSegments.push(post.excerpt);
-      
-      post.content.forEach(p => {
-        const cleanP = cleanTextHTML(p);
-        if (cleanP) {
-          // Match standard sentence terminators (. ! ?)
-          const sentences = cleanP.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
-          textSegments.push(...sentences);
-        }
-      });
+    const utterance = new SpeechSynthesisUtterance(fullText);
+    utterance.rate = speechRate;
+    utterance.pitch = 1;
 
-      if (textSegments.length === 0) return;
+    const voices = window.speechSynthesis.getVoices();
+    const naturalVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
+    if (naturalVoice) utterance.voice = naturalVoice;
 
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
-                             voices.find(v => v.lang.startsWith('en')) ||
-                             voices[0];
-
-      setIsPlayingSpeech(true);
+    utterance.onend = () => {
+      setIsPlayingSpeech(false);
       setIsPausedSpeech(false);
+    };
 
-      let activeUtterancesCount = textSegments.length;
+    utterance.onerror = () => {
+      setIsPlayingSpeech(false);
+      setIsPausedSpeech(false);
+    };
 
-      textSegments.forEach((segment) => {
-        const utterance = new SpeechSynthesisUtterance(segment);
-        utterance.rate = speechRate;
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-
-        const handleFinish = () => {
-          activeUtterancesCount--;
-          if (activeUtterancesCount <= 0) {
-            setIsPlayingSpeech(false);
-            setIsPausedSpeech(false);
-          }
-        };
-
-        utterance.onend = handleFinish;
-        utterance.onerror = (e) => {
-          console.warn("Speech synthesis error or canceled:", e);
-          handleFinish();
-        };
-
-        window.speechSynthesis.speak(utterance);
-      });
-    }, 100);
+    window.speechSynthesis.speak(utterance);
+    setIsPlayingSpeech(true);
+    setIsPausedSpeech(false);
   };
 
   const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlayingSpeech(false);
     setIsPausedSpeech(false);
   };
@@ -213,72 +184,14 @@ export function ArticlePage() {
   const updateSpeechRate = (newRate: number) => {
     setSpeechRate(newRate);
     if (isPlayingSpeech) {
-      window.speechSynthesis.cancel();
-      setIsPlayingSpeech(false);
-      setIsPausedSpeech(false);
-      
-      setTimeout(() => {
-        const cleanTextHTML = (htmlStr: string) => {
-          const tmp = document.createElement('div');
-          tmp.innerHTML = htmlStr;
-          return tmp.textContent || tmp.innerText || '';
-        };
-
-        const textSegments: string[] = [];
-        if (post.title) textSegments.push(post.title);
-        if (post.excerpt) textSegments.push(post.excerpt);
-        
-        post.content.forEach(p => {
-          const cleanP = cleanTextHTML(p);
-          if (cleanP) {
-            const sentences = cleanP.split(/(?<=[.!?])\s+/).map(s => s.trim()).filter(Boolean);
-            textSegments.push(...sentences);
-          }
-        });
-
-        if (textSegments.length === 0) return;
-
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) ||
-                               voices.find(v => v.lang.startsWith('en')) ||
-                               voices[0];
-
-        setIsPlayingSpeech(true);
-        setIsPausedSpeech(false);
-
-        let activeUtterancesCount = textSegments.length;
-
-        textSegments.forEach((segment) => {
-          const ut = new SpeechSynthesisUtterance(segment);
-          ut.rate = newRate;
-          if (preferredVoice) {
-            ut.voice = preferredVoice;
-          }
-
-          const handleFinish = () => {
-            activeUtterancesCount--;
-            if (activeUtterancesCount <= 0) {
-              setIsPlayingSpeech(false);
-              setIsPausedSpeech(false);
-            }
-          };
-
-          ut.onend = handleFinish;
-          ut.onerror = (e) => {
-            console.warn("Speech synthesis error or canceled:", e);
-            handleFinish();
-          };
-
-          window.speechSynthesis.speak(ut);
-        });
-      }, 100);
+      stopSpeaking();
+      setTimeout(() => speakArticle(), 150);
     }
   };
 
-  const activeLikesCount = likesCount !== null ? likesCount : (post.likesCount || 0);
-  const category = CATEGORIES[post.categoryId];
-  const relatedPosts = posts.filter(p => p.id !== post.id).slice(0, 3);
-  const currentUrl = window.location.href;
+  const relatedPosts = posts.filter(p => p.id !== post.id && p.categoryId === post.categoryId).slice(0, 3);
+  const fallbackRelated = relatedPosts.length > 0 ? relatedPosts : posts.filter(p => p.id !== post.id).slice(0, 3);
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : `https://oinone.co/article/${post.id}`;
 
   const getReactionCount = (type: 'like' | 'informative' | 'inspiring' | 'mindBlown') => {
     let base = type === 'like' ? Math.max(1, Math.floor(activeLikesCount * 0.4)) :
@@ -299,7 +212,7 @@ export function ArticlePage() {
     try { safeSetItem(tokenKey, JSON.stringify(updated)); } catch (err) {}
     try {
       const result = await togglePostLike(articleId);
-      setLikesCount(result.count);
+      if (result) setLikesCount(result.count);
     } catch (e) {}
   };
 
@@ -325,7 +238,7 @@ export function ArticlePage() {
     if (!articleId || !newCommentContent.trim()) return;
     setSubmittingComment(true);
     try {
-      const name = newCommentName.trim() || 'Anonymous Reader';
+      const name = newCommentName.trim() || 'Reader';
       await addPostComment(articleId, name, newCommentContent.trim());
       setNewCommentContent('');
       setNewCommentName('');
@@ -335,8 +248,8 @@ export function ArticlePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white">
-      {/* Article SEO Rich Snippets JSON-LD */}
+    <div className="min-h-screen bg-zinc-50 text-zinc-900">
+      {/* Article SEO Structured Data (JSON-LD) */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
@@ -353,14 +266,14 @@ export function ArticlePage() {
           "author": [{
             "@type": "Person",
             "name": post.author?.name || "Peter Damiano",
-            "role": post.author?.role || "Developer & Writer"
+            "role": post.author?.role || "Founder & Editor"
           }],
           "publisher": {
             "@type": "Organization",
             "name": "Oinone",
             "logo": {
               "@type": "ImageObject",
-              "url": "https://oinone.com/logo.svg"
+              "url": "https://oinone.co/logo.svg"
             }
           },
           "mainEntityOfPage": {
@@ -370,415 +283,287 @@ export function ArticlePage() {
         })}
       </script>
 
-      {/* Progress Bar */}
+      {/* Reading Progress Bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-blue via-brand-cyan to-brand-purple origin-left z-50 shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+        className="fixed top-0 left-0 right-0 h-1 bg-indigo-600 origin-left z-50"
         style={{ scaleX }}
       />
       
-      {/* Massive Hero Setup */}
-      <div className="relative pt-24 min-h-[85vh] flex flex-col items-center justify-center isolation-auto border-b border-white/5">
-        <div className="absolute inset-0 z-0">
-          <img src={optimizeImageUrl(post.imageUrl, 1200)} alt={post.title} className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0c] via-transparent to-[#0a0a0c]" />
-        </div>
-
-        <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col items-center text-center mt-12 mb-16">
-          <div className="w-full flex items-center justify-between mb-8 opacity-70">
-            <Link to="/" className="inline-flex items-center text-xs font-bold uppercase tracking-widest hover:text-white hover:opacity-100 transition-all">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+      {/* Article Header */}
+      <header className="bg-white border-b border-zinc-200 py-10 sm:py-14">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to all articles</span>
             </Link>
-            <div className="flex gap-4">
-              <button onClick={toggleSave} className={`flex items-center gap-2 cursor-pointer transition-colors ${saved ? 'text-brand-cyan' : 'hover:text-white'}`}>
-                <Bookmark className="w-4 h-4" /> {saved ? 'Saved' : 'Save'}
-              </button>
-            </div>
+            <button 
+              onClick={toggleSave} 
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
+                saved 
+                  ? 'bg-indigo-50 border-indigo-200 text-indigo-700' 
+                  : 'bg-white border-zinc-200 text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>{saved ? 'Saved' : 'Save article'}</span>
+            </button>
           </div>
-          
-          <div className="flex items-center gap-3 mb-8">
-            <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
-              {category?.name || 'Article'}
+
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600">
+              {category?.name || 'Insight'}
             </span>
-            <span className="text-white/30">•</span>
-            <span className="flex items-center text-xs font-bold text-gray-400 uppercase tracking-widest">
-              <Clock className="mr-1 h-3.5 w-3.5" />
+            <span className="text-zinc-300">·</span>
+            <span className="flex items-center text-xs text-zinc-500 gap-1">
+              <Clock className="h-3.5 w-3.5" />
               {post.readTime} min read
             </span>
           </div>
-          
-          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-extrabold leading-[1.1] mb-8 tracking-tight text-white/95 max-w-4xl text-balance">
+
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight leading-[1.15] mb-6">
             {post.title}
           </h1>
-          
-          <p className="text-xl sm:text-2xl text-gray-400 font-medium leading-relaxed max-w-3xl mb-12">
+
+          <p className="text-lg sm:text-xl text-zinc-600 leading-relaxed mb-8">
             {post.excerpt}
           </p>
-          
-          <div className="flex items-center gap-6 glass-panel pl-2 pr-6 py-2 rounded-[2rem]">
-            <img src={post.author.avatar} alt={post.author.name} className="h-14 w-14 rounded-full border-2 border-white/10" />
-            <div className="text-left">
-              <p className="font-bold text-white text-lg">{post.author.name}</p>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{post.author.role}</p>
+
+          <div className="flex items-center justify-between pt-6 border-t border-zinc-100">
+            <div className="flex items-center gap-3">
+              <img 
+                src={post.author.avatar} 
+                alt={post.author.name} 
+                className="h-10 w-10 rounded-full object-cover border border-zinc-200"
+              />
+              <div>
+                <p className="text-sm font-medium text-zinc-900">{post.author.name}</p>
+                <p className="text-xs text-zinc-500">{post.author.role}</p>
+              </div>
             </div>
-            <div className="w-px h-8 bg-white/10 mx-2" />
-            <div className="text-left">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Published</p>
-              <p className="font-bold text-white">{new Date(post.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+            <div className="text-right">
+              <p className="text-xs text-zinc-400">Published</p>
+              <p className="text-xs font-medium text-zinc-700">
+                {new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+              </p>
             </div>
           </div>
         </div>
+      </header>
+
+      {/* Featured Image */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-8 mb-10">
+        <div className="aspect-[16/9] w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-100 shadow-sm">
+          <img 
+            src={optimizeImageUrl(post.imageUrl, 1200)} 
+            alt={post.title} 
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 grid grid-cols-1 lg:grid-cols-12 gap-16 relative">
+      {/* Article Body + Narration */}
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         
-        {/* Left Sidebar (Sticky Features) */}
-        <div className="hidden lg:block lg:col-span-3">
-          <div className="sticky top-32 space-y-8">
-            {post.summary && (
-              <div className="glass-panel p-6 rounded-3xl border border-brand-purple/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                   <Sparkles className="w-20 h-20" />
-                </div>
-                <div className="flex items-center gap-2 mb-4 text-brand-purple">
-                  <Sparkles className="w-5 h-5" />
-                  <span className="font-bold text-xs uppercase tracking-widest">Quick Summary</span>
-                </div>
-                <p className="text-sm text-gray-300 font-medium leading-relaxed">
-                  {post.summary}
-                </p>
-              </div>
-            )}
-
-            {/* Sponsored Monetag Integration */}
-            {sidebarPromo && sidebarPromo.status === 'active' && (
-              <a 
-                href={sidebarPromo.linkUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="block group relative rounded-3xl border border-emerald-500/30 bg-[#121216]/90 p-5 overflow-hidden transition-all duration-300 hover:border-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)] text-left"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 opacity-50 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10 space-y-3">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-extrabold uppercase tracking-widest text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {sidebarPromo.label}
-                  </div>
-                  <h4 className="font-bold text-sm text-white group-hover:text-emerald-300 transition-colors">
-                    {sidebarPromo.title}
-                  </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed font-semibold">
-                    {sidebarPromo.description}
-                  </p>
-                  <div className="pt-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-emerald-400">
-                    <span>{sidebarPromo.btnText}</span>
-                    <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </a>
-            )}
-            
-            <div className="space-y-4">
-              <span className="text-xs font-bold text-white/40 uppercase tracking-widest ml-2">Share Log</span>
-              <ShareButtons title={post.title} url={currentUrl} />
+        {/* Listen Narration Player */}
+        <div className="mb-10 p-4 rounded-xl bg-white border border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-zinc-100 text-zinc-700">
+              <Volume2 className="w-5 h-5" />
             </div>
+            <div>
+              <h4 className="text-sm font-medium text-zinc-900">Audio Narration</h4>
+              <p className="text-xs text-zinc-500">
+                {isPlayingSpeech 
+                  ? (isPausedSpeech ? 'Paused' : 'Playing aloud...') 
+                  : 'Listen to this article'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <button
+              onClick={() => updateSpeechRate(speechRate === 1 ? 1.25 : speechRate === 1.25 ? 1.5 : 1)}
+              className="px-2.5 py-1 text-xs font-medium rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 transition-colors"
+            >
+              {speechRate}x
+            </button>
+            <button
+              onClick={speakArticle}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              {isPlayingSpeech && !isPausedSpeech ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" /> {isPausedSpeech ? 'Resume' : 'Listen'}
+                </>
+              )}
+            </button>
+            {isPlayingSpeech && (
+              <button
+                onClick={stopSpeaking}
+                className="p-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                title="Stop"
+              >
+                <Square className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Main Article Content */}
-        <article className="lg:col-span-7 w-full min-w-0 sm:-mt-10 relative z-20">
-          
-          {/* Futuristic Audio Synthesizer / TTS Control Center */}
-          <div className="mb-8 p-5 rounded-3xl bg-[#121216]/95 border border-white/5 relative overflow-hidden backdrop-blur-md shadow-xl">
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-blue/5 via-brand-cyan/5 to-brand-purple/5 opacity-50" />
-            
-            <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "p-3.5 rounded-2xl transition-all duration-300",
-                  isPlayingSpeech && !isPausedSpeech 
-                    ? "bg-brand-cyan/20 text-brand-cyan shadow-[0_0_15px_rgba(6,182,212,0.3)] animate-pulse" 
-                    : "bg-white/5 text-gray-400"
-                )}>
-                  <Volume2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-white uppercase tracking-wider">Listen to Article</h4>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
-                    {isPlayingSpeech 
-                      ? (isPausedSpeech ? "Audio System Paused" : "Reading Aloud...") 
-                      : "Standard Browser Narration"}
-                  </p>
-                </div>
+        {/* Formatted Content */}
+        <div className="prose-article prose-zinc max-w-none">
+          {post.content.map((paragraph, idx) => (
+            <div key={`p-${idx}`} className="mb-6 leading-relaxed">
+              <Markdown>{paragraph}</Markdown>
+            </div>
+          ))}
+        </div>
+
+        {/* Share buttons */}
+        <div className="mt-12 pt-8 border-t border-zinc-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            Share this article
+          </span>
+          <ShareButtons title={post.title} url={currentUrl} />
+        </div>
+
+        {/* Reactions Section */}
+        <div className="mt-10 pt-8 border-t border-zinc-200">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+            Was this article helpful?
+          </h3>
+          <div className="flex flex-wrap gap-2.5">
+            <button
+              onClick={() => handleReact('like')}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                reactions.like
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+              )}
+            >
+              <ThumbsUp className="w-4 h-4" /> Helpful ({getReactionCount('like')})
+            </button>
+            <button
+              onClick={() => handleReact('informative')}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                reactions.informative
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+              )}
+            >
+              <Lightbulb className="w-4 h-4" /> Informative ({getReactionCount('informative')})
+            </button>
+            <button
+              onClick={() => handleReact('inspiring')}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                reactions.inspiring
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+              )}
+            >
+              <Rocket className="w-4 h-4" /> Practical ({getReactionCount('inspiring')})
+            </button>
+            <button
+              onClick={() => handleReact('mindBlown')}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-xs font-medium transition-colors cursor-pointer",
+                reactions.mindBlown
+                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : "bg-white border-zinc-200 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
+              )}
+            >
+              <Sparkles className="w-4 h-4" /> Insightful ({getReactionCount('mindBlown')})
+            </button>
+          </div>
+        </div>
+
+        {/* Reader Comments */}
+        <div className="mt-14 pt-10 border-t border-zinc-200">
+          <div className="flex items-center gap-2 mb-6">
+            <MessageSquare className="w-5 h-5 text-zinc-700" />
+            <h2 className="text-xl font-semibold text-zinc-900">
+              Discussion ({comments.length})
+            </h2>
+          </div>
+
+          <form onSubmit={handleCommentSubmit} className="mb-10 p-5 rounded-xl bg-white border border-zinc-200">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Your Name</label>
+                <input
+                  type="text"
+                  value={newCommentName}
+                  onChange={(e) => setNewCommentName(e.target.value)}
+                  placeholder="e.g. Sarah Jenkins"
+                  maxLength={60}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-indigo-500"
+                />
               </div>
-
-              {/* Control Action Buttons */}
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                {/* Speed Select Button */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-gray-300">
-                  <span className="text-gray-500 uppercase tracking-wider">Speed:</span>
-                  <button 
-                    onClick={() => updateSpeechRate(speechRate === 1 ? 1.25 : speechRate === 1.25 ? 1.5 : speechRate === 1.5 ? 1.75 : 1)}
-                    className="hover:text-brand-cyan transition-colors font-mono cursor-pointer"
-                  >
-                    {speechRate}x
-                  </button>
-                </div>
-
-                {/* Play/Pause Trigger */}
-                <button 
-                  onClick={speakArticle}
-                  className={cn(
-                    "flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer",
-                    isPlayingSpeech && !isPausedSpeech
-                      ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/25"
-                      : "bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20 hover:bg-brand-cyan/25"
-                  )}
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Your Comment</label>
+                <textarea
+                  value={newCommentContent}
+                  onChange={(e) => setNewCommentContent(e.target.value)}
+                  placeholder="Share your perspective or ask a question..."
+                  required
+                  rows={3}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3.5 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={submittingComment || !newCommentContent.trim()}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  {isPlayingSpeech && !isPausedSpeech ? (
-                    <>
-                      <Pause className="w-4 h-4" />
-                      <span>Pause</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4" />
-                      <span>{isPausedSpeech ? "Resume" : "Listen"}</span>
-                    </>
-                  )}
+                  {submittingComment ? 'Posting...' : 'Post comment'} <Send className="w-3.5 h-3.5" />
                 </button>
-
-                {/* Stop Trigger */}
-                {isPlayingSpeech && (
-                  <button 
-                    onClick={stopSpeaking}
-                    className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/10 transition-colors cursor-pointer"
-                    title="Stop Playback"
-                  >
-                    <Square className="w-4 h-4" />
-                  </button>
-                )}
               </div>
             </div>
+          </form>
 
-            {/* Simulated wave animation when speaking */}
-            {isPlayingSpeech && !isPausedSpeech && (
-              <div className="mt-4 flex items-center justify-center gap-1.5 h-6 opacity-80">
-                <span className="w-1 h-3 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0s', animationDuration: '0.6s' }} />
-                <span className="w-1 h-5 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0.15s', animationDuration: '0.5s' }} />
-                <span className="w-1 h-4 bg-brand-purple rounded-full animate-bounce" style={{ animationDelay: '0.3s', animationDuration: '0.7s' }} />
-                <span className="w-1 h-6 bg-brand-cyan rounded-full animate-bounce" style={{ animationDelay: '0.45s', animationDuration: '0.4s' }} />
-                <span className="w-1 h-3 bg-brand-blue rounded-full animate-bounce" style={{ animationDelay: '0.6s', animationDuration: '0.55s' }} />
-                <span className="w-1 h-5 bg-brand-purple rounded-full animate-bounce" style={{ animationDelay: '0.75s', animationDuration: '0.6s' }} />
-              </div>
+          {/* Comments List */}
+          <div className="space-y-4">
+            {comments.length === 0 ? (
+              <p className="text-sm text-zinc-500 py-4 text-center">No comments yet. Start the conversation!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="p-4 rounded-xl bg-white border border-zinc-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-zinc-900">{comment.authorName}</span>
+                    <span className="text-xs text-zinc-400">
+                      {formatDistanceToNow(new Date(comment.createdAt))} ago
+                    </span>
+                  </div>
+                  <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                </div>
+              ))
             )}
           </div>
+        </div>
 
-          {/* Sponsored Ad Unit (Monetag Direct Link) */}
-          {bottomBannerPromo && bottomBannerPromo.status === 'active' && (
-            <a
-              href={bottomBannerPromo.linkUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block mb-8 p-6 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-black/40 to-cyan-950/40 border border-emerald-500/40 hover:border-emerald-300 transition-all duration-300 relative overflow-hidden group shadow-xl hover:shadow-[0_0_30px_rgba(16,185,129,0.25)] text-left"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-transparent to-cyan-500/10 opacity-30 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute -right-16 -top-16 w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-500" />
-              
-              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="space-y-2">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/35 text-emerald-400 text-[10px] font-extrabold uppercase tracking-widest">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    {bottomBannerPromo.label}
-                  </div>
-                  <h3 className="text-xl font-extrabold text-white group-hover:text-emerald-300 transition-colors leading-tight">
-                    {bottomBannerPromo.title}
-                  </h3>
-                  <p className="text-xs font-semibold text-gray-400 leading-relaxed uppercase tracking-wider">
-                    {bottomBannerPromo.description}
-                  </p>
-                </div>
-                <div className="shrink-0 w-full md:w-auto">
-                  <div className="px-6 py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25">
-                    {bottomBannerPromo.btnText}
-                    <ExternalLink className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-            </a>
-          )}
+      </main>
 
-          <div className="prose prose-invert prose-lg max-w-none w-full break-words prose-headings:font-display prose-headings:font-bold prose-headings:tracking-tight prose-a:text-brand-cyan hover:prose-a:text-brand-blue prose-img:rounded-3xl prose-img:border prose-img:border-white/10 leading-relaxed text-gray-300">
-            {(() => {
-              const renderedElements: React.ReactNode[] = [];
-              const totalItems = post.content.length;
-              
-              // Filter out the main cover image from secondary body images to prevent repetition
-              const bodyImages = (post.images || []).filter(img => img !== post.imageUrl);
-              
-              post.content.forEach((paragraph, idx) => {
-                const hasHTML = paragraph.trim().startsWith('<') || /<\/?[a-z][\s\S]*>/i.test(paragraph);
-                let elementObj: React.ReactNode;
-                
-                if (hasHTML) {
-                  const cleanedParagraph = paragraph
-                    .replace(/(<(p|blockquote)[^>]*>)\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '$1')
-                    .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
-                  elementObj = <div key={`p-${idx}`} className="mb-8 animate-fade-in" dangerouslySetInnerHTML={{ __html: cleanedParagraph }} />;
-                } else if (idx === 0) {
-                  const cleanedParagraph = paragraph
-                    .replace(/^\s*(\()?Meta\s+Description(\s*[:\-\)])*\s*/gi, '');
-                  elementObj = <div key={`p-${idx}`} className="text-xl sm:text-2xl text-white/90 font-medium leading-relaxed mb-10 markdown-body"><Markdown>{cleanedParagraph}</Markdown></div>;
-                } else {
-                  elementObj = <div key={`p-${idx}`} className="mb-8 markdown-body"><Markdown>{paragraph}</Markdown></div>;
-                }
-                
-                renderedElements.push(elementObj);
-
-                // Insert the first secondary image after ~1/3 of the elements
-                if (bodyImages.length > 0 && idx === Math.floor(totalItems / 3)) {
-                  renderedElements.push(
-                    <div key="body-img-1" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                      <img 
-                        src={optimizeImageUrl(bodyImages[0], 800)} 
-                        alt="Article insight illustration" 
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                    </div>
-                  );
-                }
-
-                // Insert the second secondary image after ~2/3 of the elements
-                if (bodyImages.length > 1 && idx === Math.floor((2 * totalItems) / 3) && Math.floor((2 * totalItems) / 3) !== Math.floor(totalItems / 3)) {
-                  renderedElements.push(
-                    <div key="body-img-2" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                      <img 
-                        src={optimizeImageUrl(bodyImages[1], 800)} 
-                        alt="Deep dive analysis graphic" 
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                    </div>
-                  );
-                }
-              });
-
-              // Fallbacks: if total paragraphs are extremely small, append body images at the end
-              const minIndexForFirst = Math.floor(totalItems / 3);
-              const minIndexForSecond = Math.floor((2 * totalItems) / 3);
-              
-              if (bodyImages.length > 0 && minIndexForFirst >= totalItems) {
-                renderedElements.push(
-                  <div key="body-img-1-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                    <img src={optimizeImageUrl(bodyImages[0], 800)} alt="Article insight illustration" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                  </div>
-                );
-              }
-              if (bodyImages.length > 1 && minIndexForSecond >= totalItems) {
-                renderedElements.push(
-                  <div key="body-img-2-fallback" className="my-10 overflow-hidden rounded-3xl border border-white/10 group relative shadow-2xl">
-                    <img src={optimizeImageUrl(bodyImages[1], 800)} alt="Deep dive analysis graphic" loading="lazy" referrerPolicy="no-referrer" className="w-full h-[350px] object-cover transition-transform duration-700 hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                  </div>
-                );
-              }
-
-              return renderedElements;
-            })()}
-          </div>
-
-          {/* Share buttons segment for mobile & tablet readers (hidden on desktop to avoid repetition) */}
-          <div className="mt-12 pt-8 border-t border-white/10 lg:hidden">
-            <ShareButtons title={post.title} url={currentUrl} />
-          </div>
-
-          {/* Reactions Interactivity */}
-          <div className="mt-16 pt-10 border-t border-white/10">
-             <h3 className="font-display text-2xl font-bold mb-6">Comments</h3>
-             <div className="flex flex-wrap gap-4">
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReact('like')} className={cn("flex px-6 py-3 rounded-2xl border text-sm font-bold transition-all", reactions.like ? "bg-brand-blue/20 border-brand-blue/50 text-white" : "glass-panel hover-glass text-gray-400")} >
-                  <ThumbsUp className={cn("h-5 w-5 mr-2", reactions.like ? "text-brand-blue" : "")} /> 👍 {getReactionCount('like')}
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReact('informative')} className={cn("flex px-6 py-3 rounded-2xl border text-sm font-bold transition-all", reactions.informative ? "bg-amber-500/20 border-amber-500/50 text-white" : "glass-panel hover-glass text-gray-400")} >
-                  <Lightbulb className={cn("h-5 w-5 mr-2", reactions.informative ? "text-amber-500" : "")} /> 💡 {getReactionCount('informative')}
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReact('inspiring')} className={cn("flex px-6 py-3 rounded-2xl border text-sm font-bold transition-all", reactions.inspiring ? "bg-emerald-500/20 border-emerald-500/50 text-white" : "glass-panel hover-glass text-gray-400")} >
-                  <Rocket className={cn("h-5 w-5 mr-2", reactions.inspiring ? "text-emerald-500" : "")} /> 🚀 {getReactionCount('inspiring')}
-                </motion.button>
-                <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleReact('mindBlown')} className={cn("flex px-6 py-3 rounded-2xl border text-sm font-bold transition-all", reactions.mindBlown ? "bg-brand-purple/20 border-brand-purple/50 text-white" : "glass-panel hover-glass text-gray-400")} >
-                  <Sparkles className={cn("h-5 w-5 mr-2", reactions.mindBlown ? "text-brand-purple" : "")} /> 😮 {getReactionCount('mindBlown')}
-                </motion.button>
-             </div>
-          </div>
-        </article>
-      </div>
-
-      {/* Discussion Console */}
-      <div className="bg-[#0a0a0c] border-t border-white/5 py-20 relative">
-         <div className="max-w-4xl mx-auto px-4 sm:px-6 z-10 relative">
-            <div className="flex items-center gap-3 mb-10">
-              <MessageSquare className="w-6 h-6 text-brand-purple" />
-              <h2 className="font-display text-3xl font-bold text-white">System Console <span className="opacity-50">({comments.length})</span></h2>
-            </div>
-            
-            <form onSubmit={handleCommentSubmit} className="mb-12 glass-panel p-8 rounded-3xl border border-white/10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-cyan/10 blur-[50px]" />
-              <div className="space-y-6 relative z-10">
-                 <div>
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Identity Handler</label>
-                   <input type="text" value={newCommentName} onChange={(e) => setNewCommentName(e.target.value)} placeholder="Anonymous User" maxLength={80} className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-brand-purple transition-all" />
-                 </div>
-                 <div>
-                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2 block">Data Output</label>
-                   <textarea value={newCommentContent} onChange={(e) => setNewCommentContent(e.target.value)} placeholder="Initialize thought sequence..." required rows={4} className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm focus:outline-none focus:border-brand-purple transition-all resize-none" />
-                 </div>
-                 <div className="flex justify-end">
-                   <button type="submit" disabled={submittingComment || !newCommentContent.trim()} className="bg-white text-black px-8 py-4 rounded-xl font-bold text-sm uppercase tracking-wider hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center gap-2">
-                      {submittingComment ? "Transmitting..." : "Execute"} <Send className="w-4 h-4" />
-                   </button>
-                 </div>
-              </div>
-            </form>
-
-            <div className="space-y-6">
-              {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-4 p-6 glass-panel rounded-3xl border border-white/5 relative group">
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <img src={comment.authorAvatar} alt={comment.authorName} className="w-12 h-12 rounded-full border border-white/10 shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-2">
-                       <span className="font-bold text-white text-lg">{comment.authorName}</span>
-                       <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">
-                         {formatDistanceToNow(new Date(comment.createdAt))} ago
-                       </span>
-                    </div>
-                    <p className="text-gray-400 font-medium leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-         </div>
-      </div>
-
-      {/* Recommended Topics Overlay */}
-      <div className="bg-[#121216] border-t border-white/5 py-24 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[500px] bg-brand-cyan/5 mix-blend-screen blur-[100px] pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="flex items-center gap-3 mb-12 justify-center text-center">
-            <h2 className="font-display text-4xl font-extrabold pb-2 bg-gradient-to-r from-white via-gray-200 to-gray-500 -webkit-background-clip-text text-transparent bg-clip-text">Continue Protocol</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {relatedPosts.map(p => (
+      {/* Related Articles Section */}
+      <section className="bg-white border-t border-zinc-200 py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl font-semibold text-zinc-900 mb-8">
+            Related articles in {category?.name || 'this category'}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {fallbackRelated.map(p => (
               <ArticleCard key={p.id} post={p} variant="standard" />
             ))}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
